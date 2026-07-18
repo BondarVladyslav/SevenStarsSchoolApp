@@ -356,13 +356,12 @@
 .nav-btn-left:hover, .nav-btn-right:hover { opacity: 0.8; }
         .nav-btn:hover { opacity: 0.8; }
 .reviews-slider {
-    overflow: visible;
+    overflow: hidden;
     padding: 0 60px;
     touch-action: pan-y;
 }
 .reviews-section-wrap {
     position: relative;
-    overflow: hidden;
 }
 
 
@@ -814,10 +813,21 @@
 {% block extra_js %}
 <script>
     // REVIEWS
+    const reviewsSlider = document.querySelector('.reviews-slider');
     const reviewsTrack = document.getElementById('reviewsTrack');
     const reviewCards = reviewsTrack.querySelectorAll('.review-card');
     let reviewCurrent = 0;
-    const reviewMax = reviewCards.length - 2;  /* зупиняємось коли видно останні 2 */
+    let reviewMax = 0;  /* how many steps are needed to reach the last card — depends on screen width, recalculated below */
+
+    function computeReviewMax() {
+        const containerWidth = reviewsSlider.clientWidth;
+        const cardWidth = reviewCards[0].offsetWidth + 24;
+        /* how many cards actually fit in the visible area right now
+           (1 on most phones, 2-3 on wider screens) */
+        const visibleCount = Math.max(1, Math.floor((containerWidth + 24) / cardWidth));
+        reviewMax = Math.max(0, reviewCards.length - visibleCount);
+        if (reviewCurrent > reviewMax) reviewCurrent = reviewMax;
+    }
 
     function updateReviews() {
         const cardWidth = reviewCards[0].offsetWidth + 24;
@@ -825,11 +835,11 @@
 
         /* блокуємо кнопки на краях */
         document.getElementById('reviewsPrev').style.opacity = reviewCurrent === 0 ? '0.3' : '1';
-        document.getElementById('reviewsNext').style.opacity = reviewCurrent === reviewMax-1 ? '0.3' : '1';
+        document.getElementById('reviewsNext').style.opacity = reviewCurrent === reviewMax ? '0.3' : '1';
     }
 
     document.getElementById('reviewsNext').addEventListener('click', () => {
-        if (reviewCurrent < reviewMax-1) {
+        if (reviewCurrent < reviewMax) {
             reviewCurrent++;
             updateReviews();
         }
@@ -841,21 +851,33 @@
             updateReviews();
         }
     });
+    computeReviewMax();
     updateReviews();
 
 // GALLERY
+const gallerySlider = document.querySelector('.gallery-slider');
 const galleryTrack = document.getElementById('galleryTrack');
 const galleryItems = galleryTrack.querySelectorAll('.gallery-item');
 const dotsContainer = document.getElementById('galleryDots');
 let galleryCurrent = 0;
-const galleryMax = galleryItems.length - 3;  /* зупиняємось коли видно останні 3 */
+let galleryMax = 0;  /* same idea as reviewMax — recalculated for the current screen width */
 
-/* точка для кожного фото */
-for (let i = 0; i <= galleryMax; i++) {
-    const dot = document.createElement('button');
-    dot.className = 'gallery-dot' + (i === 0 ? ' active' : '');
-    dot.addEventListener('click', () => { galleryCurrent = i; updateGallery(); });
-    dotsContainer.appendChild(dot);
+function computeGalleryMax() {
+    const containerWidth = gallerySlider.clientWidth;
+    const itemWidth = galleryItems[0].offsetWidth + 24;
+    const visibleCount = Math.max(1, Math.floor((containerWidth + 24) / itemWidth));
+    galleryMax = Math.max(0, galleryItems.length - visibleCount);
+    if (galleryCurrent > galleryMax) galleryCurrent = galleryMax;
+}
+
+function rebuildGalleryDots() {
+    dotsContainer.innerHTML = '';
+    for (let i = 0; i <= galleryMax; i++) {
+        const dot = document.createElement('button');
+        dot.className = 'gallery-dot' + (i === galleryCurrent ? ' active' : '');
+        dot.addEventListener('click', () => { galleryCurrent = i; updateGallery(); });
+        dotsContainer.appendChild(dot);
+    }
 }
 
 function updateGallery() {
@@ -864,17 +886,26 @@ function updateGallery() {
     document.querySelectorAll('.gallery-dot').forEach((d, i) => d.classList.toggle('active', i === galleryCurrent));
 }
 
+computeGalleryMax();
+rebuildGalleryDots();
+updateGallery();
+
 setInterval(() => {
     galleryCurrent = galleryCurrent < galleryMax ? galleryCurrent + 1 : 0;
     updateGallery();
 }, 5000);
 
-// Recalculate slider positions on resize / orientation change (important for mobile)
+// Recalculate slider positions on resize / orientation change (important for mobile) —
+// the number of visible cards changes with screen width, so the max scroll
+// position (reviewMax / galleryMax) and the gallery dots have to be rebuilt too.
 let resizeTimer;
 window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
+        computeReviewMax();
         updateReviews();
+        computeGalleryMax();
+        rebuildGalleryDots();
         updateGallery();
     }, 150);
 });
@@ -913,7 +944,7 @@ function addSwipe(trackEl, onSwipeLeft, onSwipeRight) {
 }
 
 addSwipe(reviewsTrack,
-    () => { if (reviewCurrent < reviewMax - 1) { reviewCurrent++; updateReviews(); } },
+    () => { if (reviewCurrent < reviewMax) { reviewCurrent++; updateReviews(); } },
     () => { if (reviewCurrent > 0) { reviewCurrent--; updateReviews(); } }
 );
 
