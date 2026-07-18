@@ -61,6 +61,7 @@
             padding: 12px 60px;
             height: 80px;
             background: rgba(255,255,255,0.95);
+            -webkit-backdrop-filter: blur(8px);
             backdrop-filter: blur(8px);
         }
 
@@ -82,19 +83,34 @@
         /* BURGER MENU (mobile) */
         .menu-toggle {
             display: none;
+            align-items: center;
+            justify-content: center;
             margin-left: auto;
-            background: none;
+            background: var(--orange);
             border: none;
-            padding: 8px;
+            border-radius: 50%;
+            padding: 0;
+            width: 48px;
+            height: 48px;
+            min-width: 48px;
+            min-height: 48px;
             cursor: pointer;
-            color: var(--text);
+            color: #fff;
             flex-shrink: 0;
+            position: relative;
+            z-index: 310;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .menu-toggle svg { width: 26px; height: 26px; display: block; }
+        .menu-toggle svg { width: 24px; height: 24px; display: block; margin: 0 auto; }
         .menu-toggle .icon-close { display: none; }
         .menu-toggle.open .icon-burger { display: none; }
         .menu-toggle.open .icon-close { display: block; }
+
+        /* NAV OVERLAY — dims the page behind the slide-out drawer on mobile */
+        .nav-overlay {
+            display: none;
+        }
 
         .logout-form {
             display: inline-flex;
@@ -133,7 +149,7 @@
             box-shadow: 0 4px 20px rgba(255,87,49,0.4);
             z-index: 200;
             text-decoration: none;
-            transition: transform 0.2s;
+            transition: transform 0.2s, opacity 0.2s;
         }
 
         .phone-btn:hover { transform: scale(1.1); }
@@ -143,6 +159,7 @@
         .hero {
             position: relative;
             height: 100vh;
+            height: 100dvh;
             min-height: 600px;
             overflow: hidden;
         }
@@ -1295,7 +1312,7 @@
     .logout-form { margin-left: 16px; }
 
     /* HERO */
-    .hero { height: 60vh; min-height: 400px; }
+    .hero { height: 60vh; height: 60dvh; min-height: 400px; }
 
     .hero-title-wrap {
         padding: 0 20px;
@@ -1344,41 +1361,63 @@
     }
 
     @media (max-width: 640px) {
-    /* Switch the header nav into a burger-triggered dropdown */
-    .menu-toggle { display: flex; align-items: center; justify-content: center; }
+    /* Switch the header nav into a burger-triggered side drawer:
+       items stack one per row, each with a large tap target, sliding
+       in from the right over a dimmed overlay. */
+    .menu-toggle { display: flex; }
+
+    .nav-overlay {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(50, 30, 45, 0.45);
+        z-index: 290;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s;
+    }
+
+    .nav-overlay.open {
+        opacity: 1;
+        pointer-events: auto;
+    }
 
     nav {
-        position: absolute;
-        top: 100%;
-        left: 0;
+        position: fixed;
+        top: 0;
         right: 0;
+        bottom: 0;
+        left: auto;
+        width: min(78vw, 320px);
+        height: 100vh;
+        height: 100dvh;
         flex-direction: column;
         align-items: stretch;
+        justify-content: flex-start;
         gap: 0;
         background: #fff;
-        padding: 8px 20px 16px;
-        box-shadow: 0 16px 28px rgba(96, 73, 93, 0.14);
-        max-height: calc(100vh - 100%);
+        padding: 88px 0 24px;
+        box-shadow: -12px 0 32px rgba(96, 73, 93, 0.18);
         overflow-y: auto;
 
-        opacity: 0;
-        transform: translateY(-8px);
-        pointer-events: none;
-        transition: opacity 0.2s, transform 0.2s;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        z-index: 300;
     }
 
     nav.open {
-        opacity: 1;
-        transform: translateY(0);
-        pointer-events: auto;
+        transform: translateX(0);
     }
 
     nav a {
         margin-left: 0 !important;
         width: 100%;
-        padding: 14px 4px;
+        display: block;
+        padding: 18px 28px;
         border-bottom: 1px solid #F0EBEF;
-        font-size: 13px;
+        font-size: 15px;
+        min-height: 52px;
+        line-height: 16px;
     }
 
     nav a.btn-login,
@@ -1386,7 +1425,8 @@
         margin-left: 0 !important;
         width: 100%;
         border-bottom: none;
-        margin-top: 10px;
+        margin-top: 16px;
+        padding: 0 28px;
     }
 
     nav a.btn-login,
@@ -1394,7 +1434,8 @@
         display: block;
         width: 100%;
         text-align: center;
-        padding: 12px 18px;
+        padding: 16px 18px;
+        font-size: 14px;
     }
     }
 
@@ -1405,7 +1446,7 @@
     .btn-login { padding: 7px 14px; }
     .logout-form { margin-left: 10px; }
 
-    .hero { height: 55vh; min-height: 340px; }
+    .hero { height: 55vh; height: 55dvh; min-height: 340px; }
     .hero-title-wrap { padding: 0 16px; margin-top: -40px; }
 
     .section-header h2 { font-size: 32px; }
@@ -1463,6 +1504,7 @@
             <a href="{% url 'login' %}" class="btn-login">Ввійти</a>
         {% endif %}
     </nav>
+    <div class="nav-overlay" id="navOverlay"></div>
 </header>
 
 <main>
@@ -1488,7 +1530,7 @@
     </div>
 </footer>
 
-<a href="tel:+380501851955" class="phone-btn" target="_blank" rel="noopener noreferrer">
+<a href="tel:+380501851955" class="phone-btn" id="phoneBtn" target="_blank" rel="noopener noreferrer">
     <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/>
     </svg>
@@ -1505,24 +1547,34 @@
         }, 4000);
     }
 
-    // Burger menu (mobile nav dropdown)
+    // Burger menu (mobile nav side drawer)
     const menuToggle = document.getElementById('menuToggle');
     const siteNav = document.getElementById('siteNav');
+    const navOverlay = document.getElementById('navOverlay');
 
     if (menuToggle && siteNav) {
         const closeMenu = () => {
             siteNav.classList.remove('open');
             menuToggle.classList.remove('open');
             menuToggle.setAttribute('aria-expanded', 'false');
+            if (navOverlay) navOverlay.classList.remove('open');
+            document.body.style.overflow = '';
         };
 
         const toggleMenu = () => {
             const isOpen = siteNav.classList.toggle('open');
             menuToggle.classList.toggle('open', isOpen);
             menuToggle.setAttribute('aria-expanded', String(isOpen));
+            if (navOverlay) navOverlay.classList.toggle('open', isOpen);
+            // Prevent the page from scrolling behind the open drawer
+            document.body.style.overflow = isOpen ? 'hidden' : '';
         };
 
         menuToggle.addEventListener('click', toggleMenu);
+
+        if (navOverlay) {
+            navOverlay.addEventListener('click', closeMenu);
+        }
 
         document.addEventListener('click', (event) => {
             const clickedInsideHeader = event.target.closest('header');
@@ -1532,6 +1584,22 @@
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') closeMenu();
         });
+    }
+
+    // Hide the floating phone button while a horizontal slider
+    // (reviews / gallery) is in view, so its fixed bottom-right hitbox
+    // doesn't sit on top of the slider's own nav arrows on mobile.
+    const phoneBtn = document.getElementById('phoneBtn');
+    const collideSections = document.querySelectorAll('.reviews, .gallery');
+
+    if (phoneBtn && collideSections.length && 'IntersectionObserver' in window) {
+        const phoneObserver = new IntersectionObserver((entries) => {
+            const anyVisible = entries.some((entry) => entry.isIntersecting);
+            phoneBtn.style.opacity = anyVisible ? '0' : '1';
+            phoneBtn.style.pointerEvents = anyVisible ? 'none' : 'auto';
+        }, { threshold: 0.15 });
+
+        collideSections.forEach((section) => phoneObserver.observe(section));
     }
 </script>
 

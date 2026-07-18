@@ -343,14 +343,22 @@
     display: flex; align-items: center; justify-content: center;
 }
 
-
-
+/* Extra invisible tap area around the arrow circles, so the hitbox is
+   comfortably >= 44px even where the visible circle is shrunk on small
+   screens (see the .nav-btn-left/.nav-btn-right size overrides below). */
+.nav-btn-left::before,
+.nav-btn-right::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+}
 
 .nav-btn-left:hover, .nav-btn-right:hover { opacity: 0.8; }
         .nav-btn:hover { opacity: 0.8; }
 .reviews-slider {
     overflow: visible;
     padding: 0 60px;
+    touch-action: pan-y;
 }
 .reviews-section-wrap {
     position: relative;
@@ -404,7 +412,7 @@
 
         /* GALLERY */
         .gallery { padding: 0 60px 80px; max-width: var(--max-width); margin: 0 auto; }
-        .gallery-slider { overflow: hidden; }
+        .gallery-slider { overflow: hidden; touch-action: pan-y; }
 
         .gallery-track {
             display: flex;
@@ -496,7 +504,7 @@
     .review-card { width: 260px; height: auto; min-height: 300px; padding: 24px; }
     .review-author { font-size: 18px; }
     .review-text { font-size: 14px; }
-    .nav-btn-left, .nav-btn-right { width: 36px; height: 36px; font-size: 15px; }
+    .nav-btn-left, .nav-btn-right { width: 40px; height: 40px; font-size: 15px; }
 
     /* GALLERY */
     .gallery { padding: 0 20px 48px; }
@@ -870,5 +878,48 @@ window.addEventListener('resize', () => {
         updateGallery();
     }, 150);
 });
+
+// TOUCH SWIPE — lets both sliders be dragged with a finger on mobile.
+// Horizontal drags advance/go back one card; vertical drags are left
+// alone so the page can still be scrolled normally.
+function addSwipe(trackEl, onSwipeLeft, onSwipeRight) {
+    let startX = 0;
+    let startY = 0;
+    let isSwiping = false;
+
+    trackEl.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        isSwiping = true;
+    }, { passive: true });
+
+    trackEl.addEventListener('touchmove', (e) => {
+        if (!isSwiping) return;
+        const dx = e.touches[0].clientX - startX;
+        const dy = e.touches[0].clientY - startY;
+        if (Math.abs(dx) > Math.abs(dy)) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    trackEl.addEventListener('touchend', (e) => {
+        if (!isSwiping) return;
+        const dx = e.changedTouches[0].clientX - startX;
+        const threshold = 40;
+        if (dx < -threshold) onSwipeLeft();
+        else if (dx > threshold) onSwipeRight();
+        isSwiping = false;
+    });
+}
+
+addSwipe(reviewsTrack,
+    () => { if (reviewCurrent < reviewMax - 1) { reviewCurrent++; updateReviews(); } },
+    () => { if (reviewCurrent > 0) { reviewCurrent--; updateReviews(); } }
+);
+
+addSwipe(galleryTrack,
+    () => { galleryCurrent = galleryCurrent < galleryMax ? galleryCurrent + 1 : 0; updateGallery(); },
+    () => { galleryCurrent = galleryCurrent > 0 ? galleryCurrent - 1 : galleryMax; updateGallery(); }
+);
 </script>
 {% endblock %}
