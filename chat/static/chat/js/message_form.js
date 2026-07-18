@@ -235,6 +235,15 @@ function initChatSocket(options) {
             }
         }
 
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            alert('З\'єднання розірвалося під час завантаження файлу. Спробуйте ще раз.');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalLabel;
+            }
+            return;
+        }
+
         socket.send(JSON.stringify({ text, homework_id: homeworkId, file_key: fileKey }));
 
         textarea.value = '';
