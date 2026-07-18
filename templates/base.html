@@ -281,6 +281,13 @@
         }
 
         .cta-phone { font-size: 16px; font-weight: 600; line-height: 1.8; margin-bottom: 12px; }
+        .cta-phone a {
+            color: #fff;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255,255,255,0.4);
+            transition: color 0.2s, border-color 0.2s;
+        }
+        .cta-phone a:hover { color: var(--yellow); border-color: var(--yellow); }
         .social-icons { display: flex; gap: 12px; }
         .social-icons img { width: 36px; height: 36px; }
         .cta-contacts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
@@ -1476,7 +1483,7 @@
         </div>
         <div class="footer-social">
             <img src="{% static 'images/4444.svg' %}" alt="Facebook">
-            <img src="{% static 'images/5555.svg' %}" alt="Instagram">
+            <a href = 'https://www.instagram.com/seven.stars.school?igsh=MXgwaGFnN25zdTk3dw=='><img src="{% static 'images/5555.svg' %}" alt="Instagram"></a>
         </div>
     </div>
 </footer>
