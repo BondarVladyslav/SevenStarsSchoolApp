@@ -147,6 +147,20 @@ class ChatConsumerTests(TransactionTestCase):
 
         await communicator.disconnect()
 
+    async def test_ping_gets_pong_and_does_not_create_message(self):
+        communicator = self._make_communicator(self.student_user)
+        connected, _ = await self._connect(communicator)
+        self.assertTrue(connected)
+
+        await communicator.send_json_to({'type': 'ping'})
+        response = await communicator.receive_json_from(timeout=10)
+
+        self.assertEqual(response['kind'], 'pong')
+        message_count = await self._acount_messages()
+        self.assertEqual(message_count, 0)
+
+        await communicator.disconnect()
+
     @sync_to_async
     def _acreate_user(self, username):
         return User.objects.create_user(username=username, password='pass12345')

@@ -485,6 +485,17 @@
         }
 
         /* MESSAGE FORM (rendered via the message_form_widget template tag) */
+/* MESSAGE FORM (rendered via the message_form_widget template tag) */
+        .chat-connection-banner {
+            display: none;
+            padding: 8px 24px;
+            background: #FFF4E5;
+            color: #8A5A00;
+            font-size: 13px;
+            text-align: center;
+            border-top: 1px dashed #EDE4EC;
+        }
+
         .message-form {
             border-top: 1px dashed #EDE4EC;
             padding: 16px 24px 20px;
@@ -1360,7 +1371,7 @@
     .footer-info, .footer-contacts { font-size: 13px; }
     }
 
-    @media (max-width: 640px) {
+    @media (max-width: 1024px) {
     /* Switch the header nav into a burger-triggered side drawer:
        items stack one per row, each with a large tap target, sliding
        in from the right over a dimmed overlay. */

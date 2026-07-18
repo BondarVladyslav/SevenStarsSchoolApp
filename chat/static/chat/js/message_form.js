@@ -18,9 +18,6 @@ function initChatSocket(options) {
     const textarea = document.getElementById(textareaId);
     if (!chatContainer || !form || !textarea) return;
 
-    const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-    const socket = new WebSocket(`${protocol}${window.location.host}/ws/chat/${conversationId}/`);
-
     const escapeHtml = (str) => {
         const div = document.createElement('div');
         div.textContent = str == null ? '' : str;
@@ -58,23 +55,6 @@ function initChatSocket(options) {
         return html;
     };
 
-    socket.addEventListener('message', (event) => {
-        const data = JSON.parse(event.data);
-
-        if (data.kind === 'error') {
-            alert(data.message);
-            return;
-        }
-
-        const emptyState = chatContainer.querySelector('.chat-empty');
-        if (emptyState) emptyState.remove();
-        chatContainer.insertAdjacentHTML('afterbegin', buildBubble(data));
-    });
-
-    socket.addEventListener('close', () => {
-        console.warn('Chat socket closed — new messages will not appear until you reload the page.');
-    });
-
     const fileInput = fileInputId ? document.getElementById(fileInputId) : null;
     const fileChip = fileChipId ? document.getElementById(fileChipId) : null;
 
@@ -82,6 +62,117 @@ function initChatSocket(options) {
         if (fileInput) fileInput.value = '';
         if (fileChip) fileChip.innerHTML = '';
     };
+
+    let socket = null;
+    let reconnectDelay = 1000;
+    let reconnectTimer = null;
+    let pageUnloading = false;
+    let connectionBanner = null;
+    let heartbeatInterval = null;
+    let pongTimeout = null;
+
+    const showConnectionBanner = (text) => {
+        if (!connectionBanner) {
+            connectionBanner = document.createElement('div');
+            connectionBanner.className = 'chat-connection-banner';
+            form.parentNode.insertBefore(connectionBanner, form);
+        }
+        connectionBanner.textContent = text;
+        connectionBanner.style.display = 'block';
+    };
+
+    const hideConnectionBanner = () => {
+        if (connectionBanner) connectionBanner.style.display = 'none';
+    };
+
+    const stopHeartbeat = () => {
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        if (pongTimeout) clearTimeout(pongTimeout);
+        heartbeatInterval = null;
+        pongTimeout = null;
+    };
+
+    const startHeartbeat = () => {
+        stopHeartbeat();
+        heartbeatInterval = setInterval(() => {
+            if (!socket || socket.readyState !== WebSocket.OPEN) return;
+
+            socket.send(JSON.stringify({ type: 'ping' }));
+
+            pongTimeout = setTimeout(() => {
+                if (socket) socket.close();
+            }, 10000);
+        }, 15000);
+    };
+
+    const connectSocket = () => {
+        const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        socket = new WebSocket(`${protocol}${window.location.host}/ws/chat/${conversationId}/`);
+
+        socket.addEventListener('open', () => {
+            reconnectDelay = 1000;
+            hideConnectionBanner();
+            startHeartbeat();
+        });
+
+        socket.addEventListener('message', (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.kind === 'pong') {
+                if (pongTimeout) clearTimeout(pongTimeout);
+                return;
+            }
+
+            if (data.kind === 'error') {
+                alert(data.message);
+                return;
+            }
+
+            const emptyState = chatContainer.querySelector('.chat-empty');
+            if (emptyState) emptyState.remove();
+            chatContainer.insertAdjacentHTML('afterbegin', buildBubble(data));
+        });
+
+        socket.addEventListener('close', () => {
+            stopHeartbeat();
+
+            if (pageUnloading) return;
+
+            showConnectionBanner('Втрачено з\'єднання, підключення...');
+
+            reconnectTimer = setTimeout(() => {
+                connectSocket();
+            }, reconnectDelay);
+
+            reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+        });
+    };
+
+    connectSocket();
+
+    window.addEventListener('beforeunload', () => {
+        pageUnloading = true;
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        stopHeartbeat();
+    });
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState !== 'visible') return;
+
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ type: 'ping' }));
+            pongTimeout = setTimeout(() => {
+                if (socket) socket.close();
+            }, 10000);
+            return;
+        }
+
+        if (!socket || socket.readyState === WebSocket.CLOSED) {
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+            reconnectDelay = 1000;
+            connectSocket();
+        }
+    });
 
     const uploadFileToR2 = async (file) => {
         const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
@@ -114,7 +205,10 @@ function initChatSocket(options) {
         const hasFile = fileInput && fileInput.files.length > 0;
 
         if (!text && !hasFile) return;
-        if (socket.readyState !== WebSocket.OPEN) return;
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            alert('Немає з\'єднання з чатом. Зачекайте на перепідключення.');
+            return;
+        }
 
         const homeworkInput = form.querySelector('input[name="homework_id"]');
         const homeworkId = homeworkInput ? homeworkInput.value : null;

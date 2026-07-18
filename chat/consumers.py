@@ -30,6 +30,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         data = json.loads(text_data)
+
+        if data.get('type') == 'ping':
+            await self.send(text_data=json.dumps({'kind': 'pong'}))
+            return
+
         text = (data.get('text') or '').strip()
         homework_id = data.get('homework_id') or None
         file_key = (data.get('file_key') or '').strip()

@@ -13,6 +13,7 @@ if sys.platform == 'win32':
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'settings')
 
+from decouple import Csv, config
 from channels.security.websocket import OriginValidator
 from channels.auth import AuthMiddlewareStack
 from channels.routing import ProtocolTypeRouter, URLRouter
@@ -22,12 +23,16 @@ django_asgi_app = get_asgi_application()
 
 import chat.routing
 
+WS_ALLOWED_ORIGINS = config('WS_ALLOWED_ORIGINS', default='localhost', cast=Csv())
+
 application = ProtocolTypeRouter({
     'http': django_asgi_app,
     'websocket': OriginValidator(
         AuthMiddlewareStack(
             URLRouter(chat.routing.websocket_urlpatterns)
         ),
-        ['sevenstarsschool.com.ua', 'www.sevenstarsschool.com.ua'],
+        WS_ALLOWED_ORIGINS,
     ),
 })
+
+#WS_ALLOWED_ORIGINS=sevenstarsschool.com.ua,www.sevenstarsschool.com.ua
