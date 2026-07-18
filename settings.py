@@ -69,11 +69,14 @@ else:
         'default': {
             'BACKEND': 'channels_redis.core.RedisChannelLayer',
             'CONFIG': {
-                'hosts': [config('REDIS_URL', default='redis://127.0.0.1:6379/0')],
+                'hosts': [{
+                    'address': config('REDIS_URL', default='redis://127.0.0.1:6379/0'),
+                    'socket_timeout': 30,
+                    'socket_connect_timeout': 30,
+                }],
             },
         }
-    }
-
+}
 ROOT_URLCONF = 'urls'
 
 TEMPLATES = [
