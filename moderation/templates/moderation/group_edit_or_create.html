@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if group %}{{ group.name }}{% else %}Нова група{% endif %} — Seven Stars School{% endblock %}
+
+{% block content %}
+
+<div class="detail-header">
+    <div class="card-header">
+        <h1>{% if group %}{{ group.name }}{% else %}Створити групу{% endif %}</h1>
+        {% if group %}
+        <a href="{% url 'manage_group_schedule' group.id %}" class="btn-outline">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            Розклад
+        </a>
+        {% endif %}
+    </div>
+    {% if group %}
+    <div class="detail-meta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        {{ group.teacher.user.get_full_name }}
+    </div>
+    {% endif %}
+</div>
+
+<div class="detail-single">
+    <div class="detail-main">
+
+        {% if group %}
+        <div class="content-card">
+            <div class="panel-title">Учні групи</div>
+
+            {% if group.students.all %}
+                {% for student in group.students.all %}
+                <div class="entity-row">
+                    <div class="entity-row-main">
+                        <span class="entity-row-title" style="text-decoration: none;">{{ student.user.get_full_name }}</span>
+                    </div>
+                    <div class="entity-row-actions">
+                        <a href="{% url 'edit_student' student.id %}" class="btn-outline">Редагувати</a>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="list-card-empty">У групі поки немає учнів.</div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="content-card">
+            <div class="panel-title">Дані групи</div>
+
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="change_group_name">
+
+                <div class="form-field">
+                    <label for="{{ form.name.id_for_label }}">Назва</label>
+                    {{ form.name }}
+                    {% if form.name.errors %}<div class="field-error">{{ form.name.errors|first }}</div>{% endif %}
+                </div>
+
+                <div class="form-field">
+                    <label for="{{ form.teacher.id_for_label }}">Вчитель</label>
+                    {{ form.teacher }}
+                    {% if form.teacher.errors %}<div class="field-error">{{ form.teacher.errors|first }}</div>{% endif %}
+                </div>
+
+                <div class="form-field">
+                    <label for="{{ form.subject.id_for_label }}">Предмет</label>
+                    {{ form.subject }}
+                    {% if form.subject.errors %}<div class="field-error">{{ form.subject.errors|first }}</div>{% endif %}
+                </div>
+
+                <div class="form-field">
+                    <label for="{{ form.level.id_for_label }}">Рівень</label>
+                    {{ form.level }}
+                    {% if form.level.errors %}<div class="field-error">{{ form.level.errors|first }}</div>{% endif %}
+                </div>
+
+                <button type="submit" class="btn-block">Зберегти</button>
+            </form>
+
+            <div class="danger-zone-footer">
+                <form method="post" data-confirm-delete>
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete_group">
+                    <button type="submit" class="btn-danger-outline">
+                        {% if group %}Видалити групу{% else %}Припинити створення групи{% endif %}
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script id="levelsData" type="application/json">{{ levels_json|safe }}</script>
+<script>
+    const levelsData = JSON.parse(document.getElementById('levelsData').textContent);
+    const subjectSelect = document.getElementById('{{ form.subject.id_for_label }}');
+    const levelSelect = document.getElementById('{{ form.level.id_for_label }}');
+
+    function populateLevels(subjectId, selectedLevelId) {
+        levelSelect.innerHTML = '';
+
+        const emptyOption = document.createElement('option');
+        emptyOption.value = '';
+        emptyOption.textContent = 'Без рівня';
+        levelSelect.appendChild(emptyOption);
+
+        if (!subjectId) {
+            levelSelect.disabled = true;
+            return;
+        }
+
+        levelSelect.disabled = false;
+
+        levelsData
+            .filter((level) => String(level.subject_id) === String(subjectId))
+            .forEach((level) => {
+                const option = document.createElement('option');
+                option.value = level.id;
+                option.textContent = level.name;
+                if (String(level.id) === String(selectedLevelId)) {
+                    option.selected = true;
+                }
+                levelSelect.appendChild(option);
+            });
+    }
+
+    if (subjectSelect && levelSelect) {
+        populateLevels(subjectSelect.value, '{{ form.level.value|default_if_none:"" }}');
+
+        subjectSelect.addEventListener('change', () => {
+            populateLevels(subjectSelect.value, '');
+        });
+    }
+
+    document.querySelectorAll('[data-confirm-delete]').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            if (!window.confirm('Ви впевнені? Цю дію не можна скасувати.')) {
+                event.preventDefault();
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if student %}{{ student.user.get_full_name }}{% else %}Новий студент{% endif %} — Seven Stars School{% endblock %}
+
+{% block content %}
+
+<div class="detail-header">
+    <h1>{% if student %}{{ student.user.get_full_name }}{% else %}Створити студента{% endif %}</h1>
+</div>
+
+<div class="detail-single">
+    <div class="detail-main">
+
+        {% if student %}
+        <div class="content-card">
+            <div class="panel-title">Групи студента</div>
+
+            {% if student.groups.all %}
+                {% for group in student.groups.all %}
+                <div class="entity-row">
+                    <div class="entity-row-main">
+                        <span class="entity-row-title" style="text-decoration: none;">{{ group.name }}</span>
+                    </div>
+                    <div class="entity-row-actions">
+                        <form method="post" action="{% url 'edit_student' student.id %}" data-confirm-delete>
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="remove_student_from_group">
+                            <input type="hidden" name="group_id" value="{{ group.id }}">
+                            <button type="submit" class="btn-danger-outline">Видалити з групи</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="list-card-empty">Студент поки не в жодній групі.</div>
+            {% endif %}
+
+            {% if groups_without_student %}
+            <form method="post" style="margin-top: 20px;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_student_to_group">
+
+                <div class="form-field">
+                    <label>Додати в групу</label>
+                    <div class="message-form-footer" style="margin-top: 0; align-items: flex-start;">
+                        <div class="searchable-select" id="groupSearchSelect" style="flex: 1;">
+                            <svg class="searchable-select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <input type="text" class="searchable-select-input" placeholder="Пошук групи..." autocomplete="off">
+                            <input type="hidden" name="group_id" class="searchable-select-value">
+                            <div class="searchable-select-dropdown">
+                                {% for group in groups_without_student %}
+                                <div class="searchable-select-option" data-value="{{ group.id }}">{{ group.name }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-outline">Додати</button>
+                    </div>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+
+        <div class="content-card">
+            <div class="card-header">
+                <div class="panel-title" style="margin-bottom: 0;">Батьки</div>
+                <a href="{% url 'create_parent' %}?student_id={{ student.id }}" class="btn-outline">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Створити нового
+                </a>
+            </div>
+
+            {% if student.parents.all %}
+                {% for parent in student.parents.all %}
+                <div class="entity-row">
+                    <div class="entity-row-main">
+                        <a href="{% url 'edit_parent' parent.id %}" class="entity-row-title">{{ parent.user.get_full_name }}</a>
+                    </div>
+                    <div class="entity-row-actions">
+                        <form method="post" data-confirm-delete>
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="remove_parent_from_student">
+                            <input type="hidden" name="parent_id" value="{{ parent.id }}">
+                            <button type="submit" class="btn-danger-outline">Видалити</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="list-card-empty">У студента поки немає прив'язаних батьків.</div>
+            {% endif %}
+
+            {% if parents_without_student %}
+            <form method="post" style="margin-top: 20px;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_parent_to_student">
+
+                <div class="form-field">
+                    <label>Прив'язати наявного</label>
+                    <div class="message-form-footer" style="margin-top: 0; align-items: flex-start;">
+                        <div class="searchable-select" id="parentSearchSelect" style="flex: 1;">
+                            <svg class="searchable-select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <input type="text" class="searchable-select-input" placeholder="Пошук батька..." autocomplete="off">
+                            <input type="hidden" name="parent_id" class="searchable-select-value">
+                            <div class="searchable-select-dropdown">
+                                {% for parent in parents_without_student %}
+                                <div class="searchable-select-option" data-value="{{ parent.id }}">{{ parent.user.get_full_name }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-outline">Прив'язати</button>
+                    </div>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="content-card">
+            <div class="panel-title">Дані студента</div>
+
+            {% if generated_password %}
+            <div class="alert-box">
+                <span class="alert-box-label">Логін і пароль (збережіть — пароль більше не буде показаний)</span>
+                Логін: <code>{{ student.user.username }}</code><br>
+                Пароль: <code>{{ generated_password }}</code>
+            </div>
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+                {% if student_form.non_field_errors %}
+                    <div class="field-error">{{ student_form.non_field_errors }}</div>
+                {% endif %}
+                <input type="hidden" name="action" value="change_student_info">
+
+                <div class="form-field">
+                    <label for="{{ student_form.first_name.id_for_label }}">Ім'я</label>
+                    {{ student_form.first_name }}
+                    {% if student_form.first_name.errors %}<div class="field-error">{{ student_form.first_name.errors|first }}</div>{% endif %}
+                </div>
+
+                <div class="form-field">
+                    <label for="{{ student_form.last_name.id_for_label }}">Прізвище</label>
+                    {{ student_form.last_name }}
+                    {% if student_form.last_name.errors %}<div class="field-error">{{ student_form.last_name.errors|first }}</div>{% endif %}
+                </div>
+
+                <button type="submit" class="btn-block">
+                    {% if student %}Зберегти зміни{% else %}Створити студента{% endif %}
+                </button>
+            </form>
+
+            {% if student %}
+            <div class="danger-zone-footer">
+                <button type="button" class="btn-outline" id="showResetFormBtn">Скинути пароль</button>
+
+                <form method="post" id="resetPasswordForm" style="display: none; margin-top: 16px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="reset_password">
+                    <p class="prose-empty" style="margin-bottom: 12px;">
+                        Студенту буде згенеровано новий пароль. Старий перестане діяти одразу.
+                    </p>
+                    <button type="submit" class="btn-danger-outline">Підтвердити скидання</button>
+                </form>
+            </div>
+            {% endif %}
+
+            <div class="danger-zone-footer">
+                <form method="post" data-confirm-delete>
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete_student">
+                    <button type="submit" class="btn-danger-outline">
+                        {% if student %}Видалити студента{% else %}Припинити створення студента{% endif %}
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/searchable_select.js' %}"></script>
+<script>
+    initSearchableSelect('parentSearchSelect', { emptyMessage: 'Батьків не знайдено', requireSelection: true });
+    initSearchableSelect('groupSearchSelect', { emptyMessage: 'Груп не знайдено', requireSelection: true });
+
+    document.querySelectorAll('[data-confirm-delete]').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            if (!window.confirm('Ви впевнені? Цю дію не можна скасувати.')) {
+                event.preventDefault();
+            }
+        });
+    });
+
+    const showResetFormBtn = document.getElementById('showResetFormBtn');
+    const resetPasswordForm = document.getElementById('resetPasswordForm');
+    if (showResetFormBtn && resetPasswordForm) {
+        showResetFormBtn.addEventListener('click', () => {
+            resetPasswordForm.style.display = 'block';
+            showResetFormBtn.style.display = 'none';
+        });
+    }
+</script>
+{% endblock %}

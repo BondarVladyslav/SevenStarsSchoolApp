@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load file_extras %}
+
+{% block title %}{{ material.title }} — Seven Stars School{% endblock %}
+
+{% block content %}
+
+<div class="detail-header">
+    <a href="{% url 'materials_list' %}" class="back-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        Матеріали
+    </a>
+    <h1>{{ material.title }}</h1>
+    <div class="detail-meta">
+        {{ material.subject.name }}{% if material.level %} — {{ material.level.name }}{% endif %}
+    </div>
+</div>
+
+<div class="detail-single">
+    <div class="content-card">
+        {% if material.description %}
+            <div class="prose">{{ material.description|linebreaksbr }}</div>
+        {% endif %}
+
+        {% if files %}
+        <ul class="file-list" style="margin-top: 20px;">
+            {% for file in files %}
+            <li>
+                <a href="{% url 'download_material_file' file.id %}" class="file-list-link" target="_blank" rel="noopener">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    {{ file.file.name|basename }}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

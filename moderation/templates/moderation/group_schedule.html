@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Розклад — {{ group.name }} — Seven Stars School{% endblock %}
+
+{% block content %}
+
+<div class="detail-header">
+    <a href="{% url 'edit_group' group.id %}" class="back-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        {{ group.name }}
+    </a>
+    <div class="card-header">
+        <h1>Розклад групи</h1>
+        <a href="{% url 'manage_schedule_exceptions' group.id %}" class="btn-outline">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            Скасування / перенесення
+        </a>
+    </div>
+</div>
+
+<div class="detail-single">
+    <div class="detail-main">
+
+        <div class="content-card">
+            <div class="panel-title">Уроки</div>
+
+            {% if lessons %}
+                {% for lesson in lessons %}
+                <div class="entity-row">
+                    <div class="entity-row-main">
+                        <span class="entity-row-title" style="text-decoration: none;">
+                            {{ lesson.get_weekday_display }}, {{ lesson.start_time|date:"H:i" }}–{{ lesson.end_time|date:"H:i" }}
+                        </span>
+                    </div>
+                    <div class="entity-row-actions">
+                        <form method="post" data-confirm-delete>
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete_lesson">
+                            <input type="hidden" name="lesson_id" value="{{ lesson.id }}">
+                            <button type="submit" class="btn-danger-outline">Видалити</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="list-card-empty">Розклад поки порожній.</div>
+            {% endif %}
+        </div>
+
+        <div class="content-card">
+            <div class="panel-title">Додати урок</div>
+
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_lesson">
+
+                <div class="form-field">
+                    <label for="weekday">День тижня</label>
+                    <select name="weekday" id="weekday">
+                        {% for value, label in weekday_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-field">
+                    <label for="start_time">Початок</label>
+                    <input type="time" name="start_time" id="start_time" required>
+                </div>
+
+                <div class="form-field">
+                    <label for="end_time">Кінець</label>
+                    <input type="time" name="end_time" id="end_time" required>
+                </div>
+
+                <button type="submit" class="btn-block">Додати</button>
+            </form>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.querySelectorAll('[data-confirm-delete]').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            if (!window.confirm('Ви впевнені? Цю дію не можна скасувати.')) {
+                event.preventDefault();
+            }
+        });
+    });
+</script>
+{% endblock %}

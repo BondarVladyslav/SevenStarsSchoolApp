@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Скасування/перенесення — {{ group.name }} — Seven Stars School{% endblock %}
+
+{% block content %}
+
+<div class="detail-header">
+    <a href="{% url 'manage_group_schedule' group.id %}" class="back-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        {{ group.name }}
+    </a>
+    <h1>Скасування / перенесення занять</h1>
+</div>
+
+<div class="detail-single">
+    <div class="detail-main">
+
+        <div class="content-card">
+            <div class="panel-title">Наявні винятки</div>
+
+            {% if exceptions %}
+                {% for exception in exceptions %}
+                <div class="entity-row">
+                    <div class="entity-row-main">
+                        <span class="entity-row-title" style="text-decoration: none;">
+                            {{ exception.lesson.get_weekday_display }} {{ exception.lesson.start_time|date:"H:i" }} — {{ exception.original_date|date:"d.m.Y" }}
+                        </span>
+                        <div class="entity-row-subtitle">
+                            {% if exception.exception_type == 'cancelled' %}
+                                Скасовано{% if exception.reason %} — {{ exception.reason }}{% endif %}
+                            {% else %}
+                                Перенесено на {{ exception.new_date|date:"d.m.Y" }}, {{ exception.new_start_time|date:"H:i" }}–{{ exception.new_end_time|date:"H:i" }}
+                                {% if exception.reason %} — {{ exception.reason }}{% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="entity-row-actions">
+                        <form method="post" data-confirm-delete>
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete_exception">
+                            <input type="hidden" name="exception_id" value="{{ exception.id }}">
+                            <button type="submit" class="btn-danger-outline">Видалити</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="list-card-empty">Винятків поки немає.</div>
+            {% endif %}
+        </div>
+
+        <div class="content-card">
+            <div class="panel-title">Додати виняток</div>
+
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_exception">
+
+                <div class="form-field">
+                    <label>Заняття (± {{days_range}} днів від сьогодні)</label>
+                    <div class="searchable-select" id="occurrenceSearchSelect">
+                        <svg class="searchable-select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" class="searchable-select-input" placeholder="Пошук заняття..." autocomplete="off">
+                        <input type="hidden" name="lesson_occurrence" class="searchable-select-value">
+                        <div class="searchable-select-dropdown">
+                            {% for occ in occurrences %}
+                            <div class="searchable-select-option" data-value="{{ occ.lesson.id }}_{{ occ.date|date:'Y-m-d' }}">
+                                {{ occ.lesson.get_weekday_display }}, {{ occ.date|date:"d.m.Y" }}, {{ occ.lesson.start_time|date:"H:i" }}–{{ occ.lesson.end_time|date:"H:i" }}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="exception_type">Тип</label>
+                    <select name="exception_type" id="exception_type">
+                        <option value="cancelled">Скасовано</option>
+                        <option value="rescheduled">Перенесено</option>
+                    </select>
+                </div>
+
+                <div id="rescheduleFields">
+                    <div class="form-field">
+                        <label for="new_date">Нова дата</label>
+                        <input type="date" name="new_date" id="new_date">
+                    </div>
+
+                    <div class="form-field">
+                        <label for="new_start_time">Новий час початку</label>
+                        <input type="time" name="new_start_time" id="new_start_time">
+                    </div>
+
+                    <div class="form-field">
+                        <label for="new_end_time">Новий час кінця</label>
+                        <input type="time" name="new_end_time" id="new_end_time">
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="reason">Причина (необов'язково)</label>
+                    <input type="text" name="reason" id="reason">
+                </div>
+
+                <button type="submit" class="btn-block">Додати</button>
+            </form>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/searchable_select.js' %}"></script>
+<script>
+    initSearchableSelect('occurrenceSearchSelect', {
+        emptyMessage: 'Занять не знайдено',
+        requireSelection: true,
+    });
+
+    const exceptionTypeSelect = document.getElementById('exception_type');
+    const rescheduleFields = document.getElementById('rescheduleFields');
+
+    function toggleRescheduleFields() {
+        rescheduleFields.style.display = exceptionTypeSelect.value === 'rescheduled' ? 'block' : 'none';
+    }
+
+    exceptionTypeSelect.addEventListener('change', toggleRescheduleFields);
+    toggleRescheduleFields();
+
+    document.querySelectorAll('[data-confirm-delete]').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            if (!window.confirm('Ви впевнені? Цю дію не можна скасувати.')) {
+                event.preventDefault();
+            }
+        });
+    });
+</script>
+{% endblock %}

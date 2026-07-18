@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load chat_tags %}
+{% load file_extras %}
+
+{% block title %}{{ homework.title }} — {{ submission.student.user.get_full_name }} — Seven Stars School{% endblock %}
+
+{% block extra_css %}
+        .status-select-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .status-select-row .form-field { flex: 1; margin-bottom: 0; }
+
+        .grading-form .form-field:not(:first-child) { margin-top: 18px; }
+{% endblock %}
+
+{% block content %}
+
+<div class="detail-header">
+    <a href="{% url 'detail_group' homework.group.id %}" class="back-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        {{ homework.group.name }}
+    </a>
+    <h1>{{ homework.title }}</h1>
+    <div class="detail-meta-row">
+        <div class="detail-meta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            {{ submission.student.user.get_full_name }}
+        </div>
+        <div class="detail-meta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            До {{ homework.deadline|date:"d.m.Y, H:i" }}
+        </div>
+    </div>
+</div>
+
+<div class="detail-layout">
+
+    <div class="detail-main">
+
+        <div class="content-card">
+            <div class="panel-title">Опис завдання</div>
+            <div class="prose">{{ homework.description|linebreaksbr }}</div>
+        </div>
+
+        <div class="content-card">
+            <div class="card-header">
+                <div class="panel-title" style="margin-bottom: 0;">Робота учня</div>
+                {% if submission.status == 'pending' %}
+                    <span class="status-badge status-pending">На перевірці</span>
+                {% elif submission.status == 'checked' %}
+                    <span class="status-badge status-checked">{{ submission.grade }}%/50%</span>
+                {% elif submission.status == 'need_revision' %}
+                    <span class="status-badge status-revision">Потребує виправлень</span>
+                {% endif %}
+            </div>
+
+            {% if submission.text %}
+                <div class="prose">{{ submission.text|linebreaksbr }}</div>
+            {% else %}
+                <p class="prose-empty">Учень не додав текстовий опис.</p>
+            {% endif %}
+
+            {% if submission.files.all %}
+            <ul class="file-list" style="margin-top: 16px;">
+                {% for file in submission.files.all %}
+                <li>
+                    <a href="{% url 'download_submission_file' file.id %}" class="file-list-link">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        {{ file.file.name|basename }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+
+        <div class="content-card">
+            <div class="panel-title">
+                
+                Оцінити роботу
+            </div>
+            <form method="post" class="grading-form" id="submissionCheckForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="check_submission">
+
+                <div class="status-select-row">
+                    <div class="form-field">
+                        <label for="{{ submission_form.status.id_for_label }}">Статус</label>
+                        {{ submission_form.status }}
+                    </div>
+                    <div class="form-field">
+                        <label for="{{ submission_form.grade.id_for_label }}">Оцінка (/50%)</label>
+                        {{ submission_form.grade }}
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="{{ submission_form.teacher_comment.id_for_label }}">Коментар для учня</label>
+                    {{ submission_form.teacher_comment }}
+                </div>
+
+                <button type="submit" class="btn-block">
+                    {% if submission.status == 'pending' %}Оцінити {% else %}Переглянути оцінку{% endif %}
+                    
+                
+                </button>
+            </form>
+        </div>
+
+    </div>
+
+    <div class="chat-panel">
+        <div class="panel-title">Чат з учнем</div>
+
+        <div class="chat-messages custom-scroll" id="chatMessages">
+            {% if conversation_messages %}
+                {% for conversation_message in conversation_messages%}
+                <div class="chat-bubble {% if conversation_message.sender == request.user %}own{% else %}other{% endif %}">
+                    <div class="chat-sender">{{ conversation_message.sender.get_full_name|default:conversation_message.sender }}</div>
+                    {% if conversation_message.text %}{{ conversation_message.text }}{% endif %}
+                        {% if conversation_message.file %}
+                            {% if conversation_message.text %}<br>{% endif %}
+                            <a href="{% url 'download_chat_file' conversation_message.id %}" class="chat-file-link" target="_blank" rel="noopener">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                                </svg>
+                                Прикріплений файл
+                            </a>
+                        {% endif %}
+                    {% if conversation_message.homework %}
+                        {% if conversation_message.text or conversation_message.file %}<br>{% endif %}
+                        <a href="{% url 'detail_homework' conversation_message.homework.id %}" class="chat-homework-link">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                            <span>{{ conversation_message.homework.title }}</span>
+                        </a>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="chat-empty">Повідомлень поки немає. Напишіть перше!</div>
+            {% endif %}
+        </div>
+
+        {% message_form_widget message_form homework_id=homework.id conversation_id=conversation.id %}
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const submissionCheckForm = document.getElementById('submissionCheckForm');
+    const gradeInput = document.getElementById('{{ submission_form.grade.id_for_label }}');
+
+    if (submissionCheckForm && gradeInput) {
+        submissionCheckForm.addEventListener('submit', (event) => {
+            const value = Number(gradeInput.value);
+            if (gradeInput.value && (Number.isNaN(value) || value < 0 || value > 50)) {
+                event.preventDefault();
+                gradeInput.setAttribute('aria-invalid', 'true');
+                gradeInput.reportValidity();
+                gradeInput.focus();
+            }
+        });
+    }
+</script>
+{% endblock %}

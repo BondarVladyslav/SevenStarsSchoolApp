@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Мої групи — Seven Stars School{% endblock %}
+
+{% block extra_css %}
+        .teacher-groups-list { display: flex; flex-direction: column; gap: 20px; }
+
+        .teacher-group-card {
+            background: #fff;
+            border: 2px solid #F0EBEF;
+            border-radius: 20px;
+            padding: 28px;
+        }
+
+        .teacher-group-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 4px;
+        }
+
+        .teacher-group-title {
+            font-family: 'Yanone Kaffeesatz', sans-serif;
+            font-weight: 600;
+            font-size: 28px;
+            color: var(--text);
+            text-decoration: none;
+            line-height: 1.1;
+        }
+
+        .teacher-group-title:hover { color: var(--orange); }
+
+        .teacher-group-count {
+            flex-shrink: 0;
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            color: #8F7B8C;
+        }
+
+        .student-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 20px;
+        }
+
+        .student-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            background: #F8F5F7;
+            border-radius: 12px;
+            text-decoration: none;
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            color: var(--text);
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .student-row:hover { background: #FDECEA; color: var(--orange); }
+        .student-row svg { width: 15px; height: 15px; flex-shrink: 0; color: #8F7B8C; }
+        .student-row:hover svg { color: var(--orange); }
+
+        .students-empty {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            color: #8F7B8C;
+            margin-top: 16px;
+        }
+
+    @media (max-width: 900px) {
+    .teacher-group-card { padding: 22px; }
+    .teacher-group-title { font-size: 24px; }
+    }
+{% endblock %}
+
+{% block content %}
+
+<section class="groups-section">
+    <div class="section-header">
+        <h2>Мої групи</h2>
+    </div>
+
+    {% if groups %}
+    <div class="teacher-groups-list">
+        {% for group in groups %}
+        <div class="teacher-group-card">
+            <div class="teacher-group-header">
+                <a href="{% url 'detail_group' group.id %}" class="teacher-group-title">{{ group.name }}</a>
+                <span class="teacher-group-count">{{ group.students.count }} учнів</span>
+            </div>
+
+            {% if group.students.all %}
+            <ul class="student-list">
+                {% for student in group.students.all %}
+                <li>
+                    <a href="{% url 'detail_student' group.id student.id %}" class="student-row">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        {{ student.user.get_full_name }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+                <p class="students-empty">У групі поки немає учнів.</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="groups-empty">У вас поки немає груп.</div>
+    {% endif %}
+</section>
+
+{% endblock %}

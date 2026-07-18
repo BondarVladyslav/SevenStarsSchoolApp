@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Мої групи — Seven Stars School{% endblock %}
+
+{% block extra_css %}
+        /* GROUPS */
+        .groups-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .group-card {
+            display: block;
+            background: #fff;
+            border: 2px solid #F0EBEF;
+            border-radius: 20px;
+            padding: 28px;
+            text-decoration: none;
+            transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+        }
+
+        .group-card:hover {
+            border-color: var(--orange);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 28px rgba(255, 87, 49, 0.12);
+        }
+
+        .group-card-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+
+        .group-name {
+            font-family: 'Yanone Kaffeesatz', sans-serif;
+            font-weight: 600;
+            font-size: 28px;
+            color: var(--text);
+            line-height: 1.1;
+        }
+
+        .group-teacher {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            color: #8F7B8C;
+            margin-bottom: 20px;
+        }
+
+        .group-teacher svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+        .group-hw {
+            border-top: 1px dashed #EDE4EC;
+            padding-top: 16px;
+        }
+
+        .hw-label {
+            display: block;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #B5A8B3;
+            margin-bottom: 4px;
+        }
+
+        .hw-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+    @media (max-width: 900px) {
+    .groups-grid { grid-template-columns: 1fr; gap: 16px; }
+    .group-card { padding: 22px; }
+    .group-name { font-size: 24px; }
+    }
+{% endblock %}
+
+{% block content %}
+
+<section class="groups-section">
+    <div class="section-header">
+        <h2>Мої групи</h2>
+    </div>
+
+    {% if groups %}
+    <div class="groups-grid">
+        {% for group in groups %}
+        {% with hw=group.ordered_homeworks|first %}
+        <a href="{% url 'detail_group' group.id %}" class="group-card">
+            <div class="group-card-top">
+                <div class="group-name">{{ group.name }}</div>
+
+                {% if hw %}
+                    {% with latest_submission=hw.student_submissions|first %}
+                        {% if latest_submission %}
+                            {% if latest_submission.status == 'pending' %}
+                                <span class="status-badge status-pending">На перевірці</span>
+                            {% elif latest_submission.status == 'checked' %}
+                                <span class="status-badge status-checked">{{ latest_submission.grade }}%</span>
+                            {% elif latest_submission.status == 'need_revision' %}
+                                <span class="status-badge status-revision">Виправити</span>
+                            {% else %}
+                                <span class="status-badge status-none">Не здано</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="status-badge status-none">Не здано</span>
+                        {% endif %}
+                    {% endwith %}
+                {% endif %}
+            </div>
+
+            <div class="group-teacher">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                {{ group.teacher.user.get_full_name }}
+            </div>
+
+            <div class="group-hw">
+                <span class="hw-label">Останнє завдання</span>
+                <span class="hw-title">{{ hw.title|default:"Ще немає завдань" }}</span>
+            </div>
+        </a>
+        {% endwith %}
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="groups-empty">У вас поки немає груп.</div>
+    {% endif %}
+</section>
+
+{% endblock %}

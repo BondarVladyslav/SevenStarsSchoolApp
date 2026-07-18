@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if teacher %}{{ teacher.user.get_full_name }}{% else %}Новий вчитель{% endif %} — Seven Stars School{% endblock %}
+
+{% block content %}
+
+<div class="detail-header">
+    <h1>{% if teacher %}{{ teacher.user.get_full_name }}{% else %}Створити вчителя{% endif %}</h1>
+</div>
+
+<div class="detail-single">
+    <div class="detail-main">
+
+        <div class="content-card">
+            <div class="panel-title">Дані вчителя</div>
+
+            {% if generated_password %}
+            <div class="alert-box">
+                <span class="alert-box-label">Логін і пароль (збережіть — пароль більше не буде показаний)</span>
+                Логін: <code>{{ teacher.user.username }}</code><br>
+                Пароль: <code>{{ generated_password }}</code>
+            </div>
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                    <div class="field-error">{{ form.non_field_errors }}</div>
+                {% endif %}
+                <input type="hidden" name="action" value="change_teacher_info">
+
+                <div class="form-field">
+                    <label for="{{ form.first_name.id_for_label }}">Ім'я</label>
+                    {{ form.first_name }}
+                    {% if form.first_name.errors %}<div class="field-error">{{ form.first_name.errors|first }}</div>{% endif %}
+                </div>
+
+                <div class="form-field">
+                    <label for="{{ form.last_name.id_for_label }}">Прізвище</label>
+                    {{ form.last_name }}
+                    {% if form.last_name.errors %}<div class="field-error">{{ form.last_name.errors|first }}</div>{% endif %}
+                </div>
+
+                <div class="form-field">
+                    <label>Групи</label>
+                    {{ form.groups }}
+                    {% if form.groups.errors %}<div class="field-error">{{ form.groups.errors|first }}</div>{% endif %}
+                </div>
+
+                <button type="submit" class="btn-block">
+                    {% if teacher %}Зберегти зміни{% else %}Створити вчителя{% endif %}
+                </button>
+            </form>
+
+            {% if teacher %}
+            <div class="danger-zone-footer">
+                <button type="button" class="btn-outline" id="showResetFormBtn">Скинути пароль</button>
+
+                <form method="post" id="resetPasswordForm" style="display: none; margin-top: 16px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="reset_password">
+                    <p class="prose-empty" style="margin-bottom: 12px;">
+                        Вчителю буде згенеровано новий пароль. Старий перестане діяти одразу.
+                    </p>
+                    <button type="submit" class="btn-danger-outline">Підтвердити скидання</button>
+                </form>
+            </div>
+            {% endif %}
+
+            <div class="danger-zone-footer">
+                <form method="post" data-confirm-delete>
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete_teacher">
+                    <button type="submit" class="btn-danger-outline">
+                        {% if teacher %}Видалити вчителя{% else %}Припинити створення вчителя{% endif %}
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.querySelectorAll('[data-confirm-delete]').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            if (!window.confirm('Ви впевнені? Цю дію не можна скасувати.')) {
+                event.preventDefault();
+            }
+        });
+    });
+
+    const showResetFormBtn = document.getElementById('showResetFormBtn');
+    const resetPasswordForm = document.getElementById('resetPasswordForm');
+    if (showResetFormBtn && resetPasswordForm) {
+        showResetFormBtn.addEventListener('click', () => {
+            resetPasswordForm.style.display = 'block';
+            showResetFormBtn.style.display = 'none';
+        });
+    }
+</script>
+{% endblock %}

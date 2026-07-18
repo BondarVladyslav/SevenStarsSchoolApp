@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if parent %}{{ parent.user.get_full_name }}{% else %}Новий батько{% endif %} — Seven Stars School{% endblock %}
+
+{% block content %}
+
+<div class="detail-header">
+    <h1>{% if parent %}{{ parent.user.get_full_name }}{% else %}Створити батька{% endif %}</h1>
+</div>
+
+<div class="detail-single">
+    <div class="detail-main">
+
+        {% if parent %}
+        <div class="content-card">
+            <div class="panel-title">Діти</div>
+
+            {% if parent.children.all %}
+                {% for child in parent.children.all %}
+                <div class="entity-row">
+                    <div class="entity-row-main">
+                        <a href="{% url 'edit_student' child.id %}" class="entity-row-title">{{ child.user.get_full_name }}</a>
+                    </div>
+                    <div class="entity-row-actions">
+                        <form method="post" data-confirm-delete>
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="remove_child_from_parent">
+                            <input type="hidden" name="child_id" value="{{ child.id }}">
+                            <button type="submit" class="btn-danger-outline">Видалити</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="list-card-empty">У цього батька поки немає прив'язаних дітей.</div>
+            {% endif %}
+
+            {% if students_without_parent %}
+            <form method="post" style="margin-top: 20px;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_child_to_parent">
+
+                <div class="form-field">
+                    <label>Прив'язати студента</label>
+                    <div class="message-form-footer" style="margin-top: 0; align-items: flex-start;">
+                        <div class="searchable-select" id="childSearchSelect" style="flex: 1;">
+                            <svg class="searchable-select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <input type="text" class="searchable-select-input" placeholder="Пошук студента..." autocomplete="off">
+                            <input type="hidden" name="child_id" class="searchable-select-value">
+                            <div class="searchable-select-dropdown">
+                                {% for child in students_without_parent %}
+                                <div class="searchable-select-option" data-value="{{ child.id }}">{{ child.user.get_full_name }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-outline">Прив'язати</button>
+                    </div>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="content-card">
+            <div class="panel-title">Дані батька</div>
+
+            {% if generated_password %}
+            <div class="alert-box">
+                <span class="alert-box-label">Логін і пароль (збережіть — пароль більше не буде показаний)</span>
+                Логін: <code>{{ parent.user.username }}</code><br>
+                Пароль: <code>{{ generated_password }}</code>
+            </div>
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                    <div class="field-error">{{ form.non_field_errors }}</div>
+                {% endif %}
+                <input type="hidden" name="action" value="change_parent_info">
+                <input type="hidden" name="student_id" value="{{ student_id }}">
+
+                <div class="form-field">
+                    <label for="{{ form.first_name.id_for_label }}">Ім'я</label>
+                    {{ form.first_name }}
+                    {% if form.first_name.errors %}<div class="field-error">{{ form.first_name.errors|first }}</div>{% endif %}
+                </div>
+
+                <div class="form-field">
+                    <label for="{{ form.last_name.id_for_label }}">Прізвище</label>
+                    {{ form.last_name }}
+                    {% if form.last_name.errors %}<div class="field-error">{{ form.last_name.errors|first }}</div>{% endif %}
+                </div>
+
+                <button type="submit" class="btn-block">
+                    {% if parent %}Зберегти зміни{% else %}Створити батька{% endif %}
+                </button>
+            </form>
+
+            {% if parent %}
+            <div class="danger-zone-footer">
+                <button type="button" class="btn-outline" id="showResetFormBtn">Скинути пароль</button>
+
+                <form method="post" id="resetPasswordForm" style="display: none; margin-top: 16px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="reset_password">
+                    <input type="hidden" name="student_id" value="{{ student_id }}">
+                    <p class="prose-empty" style="margin-bottom: 12px;">
+                        Батьку буде згенеровано новий пароль. Старий перестане діяти одразу.
+                    </p>
+                    <button type="submit" class="btn-danger-outline">Підтвердити скидання</button>
+                </form>
+            </div>
+            {% endif %}
+
+            <div class="danger-zone-footer">
+                <form method="post" data-confirm-delete>
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete_parent">
+                    <input type="hidden" name="student_id" value="{{ student_id }}">
+                    <button type="submit" class="btn-danger-outline">
+                        {% if parent %}Видалити батька{% else %}Припинити створення{% endif %}
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/searchable_select.js' %}"></script>
+<script>
+    initSearchableSelect('childSearchSelect', { emptyMessage: 'Студентів не знайдено', requireSelection: true });
+
+    document.querySelectorAll('[data-confirm-delete]').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            if (!window.confirm('Ви впевнені? Цю дію не можна скасувати.')) {
+                event.preventDefault();
+            }
+        });
+    });
+
+    const showResetFormBtn = document.getElementById('showResetFormBtn');
+    const resetPasswordForm = document.getElementById('resetPasswordForm');
+    if (showResetFormBtn && resetPasswordForm) {
+        showResetFormBtn.addEventListener('click', () => {
+            resetPasswordForm.style.display = 'block';
+            showResetFormBtn.style.display = 'none';
+        });
+    }
+</script>
+{% endblock %}

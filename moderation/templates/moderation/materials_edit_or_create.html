@@ -1,0 +1,263 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load file_extras %}
+
+{% block title %}{% if is_edit %}Редагувати матеріал{% else %}Новий матеріал{% endif %} — Seven Stars School{% endblock %}
+
+{% block extra_css %}
+        .existing-file-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            background: #F8F5F7;
+            border-radius: 12px;
+            padding: 10px 16px;
+            margin-bottom: 8px;
+        }
+
+        .existing-file-name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            color: var(--text);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .existing-file-name svg { width: 16px; height: 16px; flex-shrink: 0; }
+{% endblock %}
+
+{% block content %}
+
+<div class="detail-header">
+    <h1>{% if is_edit %}Редагувати матеріал{% else %}Новий матеріал{% endif %}</h1>
+</div>
+
+<div class="detail-single">
+    <div class="detail-main">
+
+        <div class="content-card">
+            <div class="panel-title">Деталі матеріалу</div>
+
+            <form method="post" enctype="multipart/form-data" id="materialForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save">
+
+                <div class="form-field">
+                    <label for="{{ form.title.id_for_label }}">Назва</label>
+                    {{ form.title }}
+                    {% if form.title.errors %}<div class="field-error">{{ form.title.errors|first }}</div>{% endif %}
+                </div>
+
+                <div class="form-field">
+                    <label for="{{ form.description.id_for_label }}">Опис</label>
+                    {{ form.description }}
+                    {% if form.description.errors %}<div class="field-error">{{ form.description.errors|first }}</div>{% endif %}
+                </div>
+
+                <div class="form-field">
+                    <label>Предмет</label>
+                    <div class="searchable-select" id="subjectSearchSelect">
+                        <svg class="searchable-select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" class="searchable-select-input" placeholder="Пошук предмета..." autocomplete="off" value="{% if material.subject %}{{ material.subject.name }}{% endif %}">
+                        <input type="hidden" name="subject_id" class="searchable-select-value" value="{% if material.subject %}{{ material.subject.id }}{% endif %}">
+                        <div class="searchable-select-dropdown">
+                            {% for subject in subjects %}
+                            <div class="searchable-select-option" data-value="{{ subject.id }}">{{ subject.name }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="field-error" id="subjectFieldError" style="display: none;">Оберіть предмет</div>
+                </div>
+
+                <div class="form-field">
+                    <label>Рівень (необов'язково)</label>
+                    <div class="searchable-select" id="levelSearchSelect">
+                        <svg class="searchable-select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" class="searchable-select-input" placeholder="Пошук рівня..." autocomplete="off" value="{% if material.level %}{{ material.level.subject.name }} — {{ material.level.name }}{% endif %}">
+                        <input type="hidden" name="level_id" class="searchable-select-value" value="{% if material.level %}{{ material.level.id }}{% endif %}">
+                        <div class="searchable-select-dropdown">
+                            {% for level in levels %}
+                            <div class="searchable-select-option" data-value="{{ level.id }}" data-subject="{{ level.subject_id }}">{{ level.subject.name }} — {{ level.name }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <p class="form-hint">Якщо оберете рівень — предмет підставиться автоматично з нього</p>
+                </div>
+
+                {% if existing_files %}
+                <div class="form-field">
+                    <label>Прикріплені файли</label>
+                    {% for material_file in existing_files %}
+                    <div class="existing-file-row">
+                        <span class="existing-file-name">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                            {{ material_file.file.name|basename }}
+                        </span>
+                        <form method="post" class="delete-file-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete_file">
+                            <input type="hidden" name="file_id" value="{{ material_file.id }}">
+                            <button type="submit" class="file-chip-remove" aria-label="Видалити файл {{ material_file.file.name|basename }}">&times;</button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="form-field">
+                    <label>{% if is_edit %}Додати нові файли{% else %}Файли{% endif %}</label>
+                    <div class="message-form-footer" style="margin-top: 0;">
+                        <label for="newMaterialFiles" class="file-attach-btn" title="Прикріпити файли">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                            </svg>
+                        </label>
+                        <input type="file" name="files" id="newMaterialFiles" class="file-input-hidden" multiple>
+                    </div>
+                    <div class="file-list-selected" id="newMaterialFileList"></div>
+                    <p class="form-hint" id="newMaterialFileHint">Максимум 7 файлів</p>
+                </div>
+
+                <button type="submit" class="btn-block" id="materialSubmitBtn">
+                    {% if is_edit %}Зберегти{% else %}Створити{% endif %}
+                </button>
+            </form>
+
+            {% if is_edit %}
+            <div class="danger-zone-footer">
+                <form method="post" data-confirm-delete>
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete_material">
+                    <button type="submit" class="btn-danger-outline">Видалити матеріал</button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/form_utils.js' %}"></script>
+<script src="{% static 'js/searchable_select.js' %}"></script>
+<script>
+    initFileList('newMaterialFiles', 'newMaterialFileList', 7, 'materialSubmitBtn', 'newMaterialFileHint', Infinity);
+
+    const subjectValueInput = document.querySelector('#subjectSearchSelect .searchable-select-value');
+    const levelValueInput = document.querySelector('#levelSearchSelect .searchable-select-value');
+    const subjectFieldError = document.getElementById('subjectFieldError');
+
+    const clearSubjectError = () => { subjectFieldError.style.display = 'none'; };
+
+    const initialSubjectId = subjectValueInput.value;
+    let allowedSubjectId = initialSubjectId || null;
+
+    const levelSelect = initSearchableSelect('levelSearchSelect', {
+        emptyMessage: 'Рівнів не знайдено',
+        optionFilter: (opt) => !allowedSubjectId || opt.dataset.subject === String(allowedSubjectId),
+        onSelect: clearSubjectError,
+    });
+
+    initSearchableSelect('subjectSearchSelect', {
+        emptyMessage: 'Предметів не знайдено',
+        onSelect: (opt) => {
+            allowedSubjectId = opt.dataset.value;
+            levelSelect.clear();
+            levelSelect.refresh();
+            clearSubjectError();
+        },
+    });
+
+    document.querySelectorAll('[data-confirm-delete]').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            if (!window.confirm('Ви впевнені? Цю дію не можна скасувати.')) {
+                event.preventDefault();
+            }
+        });
+    });
+
+    const materialForm = document.getElementById('materialForm');
+    const materialSubmitBtn = document.getElementById('materialSubmitBtn');
+    const originalSubmitLabel = materialSubmitBtn.textContent;
+
+    materialForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const hasSubject = Boolean(subjectValueInput.value) || Boolean(levelValueInput.value);
+
+        if (!hasSubject) {
+            subjectFieldError.style.display = 'block';
+            document.getElementById('subjectSearchSelect').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
+        clearSubjectError();
+
+        const fileInput = document.getElementById('newMaterialFiles');
+        const files = Array.from(fileInput.files);
+        const csrfToken = materialForm.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        materialSubmitBtn.disabled = true;
+        materialSubmitBtn.textContent = files.length ? 'Завантаження файлів...' : 'Збереження...';
+
+        try {
+            const uploadedKeys = [];
+
+            if (files.length) {
+                const urlResponse = await fetch("{% url 'material_upload_url' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                    },
+                    body: JSON.stringify({ filenames: files.map((f) => f.name) }),
+                });
+
+                if (!urlResponse.ok) throw new Error('upload-url request failed');
+                const { uploads } = await urlResponse.json();
+
+                for (let i = 0; i < files.length; i++) {
+                    const { upload_url, content_type, key } = uploads[i];
+                    const putResponse = await fetch(upload_url, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': content_type },
+                        body: files[i],
+                    });
+                    if (!putResponse.ok) throw new Error(`upload failed: ${files[i].name}`);
+                    uploadedKeys.push(key);
+                }
+            }
+
+            const formData = new FormData(materialForm);
+            formData.delete('files');
+            uploadedKeys.forEach((key) => formData.append('uploaded_keys', key));
+
+            const saveResponse = await fetch(window.location.href, {
+                method: 'POST',
+                body: formData,
+            });
+
+            window.location.href = saveResponse.url;
+        } catch (err) {
+            alert('Не вдалося завантажити файли. Спробуйте ще раз.');
+            materialSubmitBtn.disabled = false;
+            materialSubmitBtn.textContent = originalSubmitLabel;
+        }
+    });
+</script>
+{% endblock %}

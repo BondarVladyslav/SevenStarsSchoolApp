@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if is_edit %}{{ subject.name }}{% else %}Новий предмет{% endif %} — Seven Stars School{% endblock %}
+
+{% block content %}
+
+<div class="detail-header">
+    <h1>{% if is_edit %}{{ subject.name }}{% else %}Створити предмет{% endif %}</h1>
+</div>
+
+<div class="detail-single">
+    <div class="detail-main">
+
+        {% if is_edit %}
+        <div class="content-card">
+            <div class="card-header">
+                <div class="panel-title" style="margin-bottom: 0;">Рівні</div>
+                <a href="{% url 'create_level' %}?subject_id={{ subject.id }}" class="btn-outline">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Додати рівень
+                </a>
+            </div>
+
+            {% if levels %}
+                {% for level in levels %}
+                <a href="{% url 'edit_level' level.id %}" class="list-card">
+                    <span class="list-card-title">{{ level.name }}</span>
+                </a>
+                {% endfor %}
+            {% else %}
+                <div class="list-card-empty">Рівнів поки немає.</div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="content-card">
+            <div class="panel-title">Дані предмета</div>
+
+            <form method="post">
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                    <div class="field-error">{{ form.non_field_errors }}</div>
+                {% endif %}
+                <input type="hidden" name="action" value="save">
+
+                <div class="form-field">
+                    <label for="{{ form.name.id_for_label }}">Назва</label>
+                    {{ form.name }}
+                    {% if form.name.errors %}<div class="field-error">{{ form.name.errors|first }}</div>{% endif %}
+                </div>
+
+                <button type="submit" class="btn-block">
+                    {% if is_edit %}Зберегти зміни{% else %}Створити предмет{% endif %}
+                </button>
+            </form>
+
+            {% if is_edit %}
+            <div class="danger-zone-footer">
+                <form method="post" data-confirm-delete>
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete_subject">
+                    <button type="submit" class="btn-danger-outline">Видалити предмет</button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.querySelectorAll('[data-confirm-delete]').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            if (!window.confirm('Ви впевнені? Цю дію не можна скасувати.')) {
+                event.preventDefault();
+            }
+        });
+    });
+</script>
+{% endblock %}

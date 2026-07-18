@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load chat_tags %}
+{% load file_extras %}
+
+{% block title %}{{ homework.title }} — Seven Stars School{% endblock %}
+
+{% block extra_css %}
+        .submission-actions { margin-top: 16px; }
+{% endblock %}
+
+{% block content %}
+
+<div class="detail-header">
+    <a href="{% url 'detail_group' homework.group.id %}" class="back-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        {{ homework.group.name }}
+    </a>
+    <h1>{{ homework.title }}</h1>
+    <div class="detail-meta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        До {{ homework.deadline|date:"d.m.Y, H:i" }}
+    </div>
+</div>
+
+<div class="detail-layout">
+
+    <div class="detail-main">
+
+        <div class="content-card">
+            <div class="panel-title">Опис завдання</div>
+            <div class="prose">{{ homework.description|linebreaksbr }}</div>
+
+            {% if homework_files %}
+            <ul class="file-list" style="margin-top: 20px;">
+                {% for homework_file in homework_files %}
+                <li>
+                    <a href="{% url 'download_homework_file' homework_file.id %}" class="file-list-link">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        {{ homework_file.file.name|basename }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+
+        <div class="content-card">
+            <div class="card-header">
+                <div class="panel-title" style="margin-bottom: 0;">Ваша робота</div>
+                {% if submission_content %}
+                    {% if submission_content.status == 'pending' %}
+                        <span class="status-badge status-pending">На перевірці</span>
+                    {% elif submission_content.status == 'checked' %}
+                        <span class="status-badge status-checked">{{ submission_content.grade }}/50</span>
+                    {% elif submission_content.status == 'need_revision' %}
+                        <span class="status-badge status-revision">Потребує виправлень</span>
+                    {% endif %}
+                {% endif %}
+            </div>
+
+            {% if submission_content %}
+                {% if submission_content.text %}
+                    <div class="prose">{{ submission_content.text|linebreaksbr }}</div>
+                {% endif %}
+
+                {% if submission_files %}
+                <ul class="file-list" style="margin-top: 16px;">
+                    {% for submission_file in submission_files %}
+                    <li>
+                        <a href="{% url 'download_submission_file' submission_file.id %}" class="file-list-link">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            {{ submission_file.file.name|basename }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+
+                {% if homework.teacher_comment %}
+                <div class="teacher-comment">
+                    <span class="teacher-comment-label">Коментар учителя</span>
+                    {{ homework.teacher_comment|linebreaksbr }}
+                </div>
+                {% endif %}
+
+                {% if submission_content.status != 'checked' %}
+                <div class="submission-actions">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete_submission">
+                        <button type="submit" class="btn-danger-outline">Видалити подану роботу</button>
+                    </form>
+                </div>
+                {% endif %}
+
+            {% else %}
+                <p class="prose-empty" style="margin-bottom: 16px;">Ви ще не здали це завдання.</p>
+            {% endif %}
+
+            {% if homework_form %}
+            <form method="post" action="{% url 'detail_homework' homework.id %}" enctype="multipart/form-data" class="message-form" id="submissionForm" style="border-top: none; padding: 0;">
+                {% csrf_token %}
+                {{ homework_form.text }}
+                {% if homework_form.text.errors %}
+                    <div class="field-error">{{ homework_form.text.errors|first }}</div>
+                {% endif %}
+                <input type="hidden" name="action" value="send_homework">
+
+                <div class="message-form-footer">
+                    <label for="submissionFiles" class="file-attach-btn" title="Прикріпити файли">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                        </svg>
+                    </label>
+                    <input type="file" name="files" id="submissionFiles" class="file-input-hidden" multiple>
+
+                    <span class="message-form-spacer"></span>
+
+                    <button type="submit" id="submissionSubmitBtn">Здати</button>
+                </div>
+
+                <div class="file-list-selected" id="submissionFileList"></div>
+                <p class="form-hint" id="submissionFileHint">Максимум 7 файлів</p>
+            </form>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <div class="chat-panel">
+        <div class="panel-title">Чат з учителем</div>
+
+        <div class="chat-messages custom-scroll" id="chatMessages">
+            {% if conversation_messages %}
+                {% for conversation_message in conversation_messages %}
+                <div class="chat-bubble {% if conversation_message.sender == request.user %}own{% else %}other{% endif %}">
+                    <div class="chat-sender">{{ conversation_message.sender.get_full_name|default:conversation_message.sender }}</div>
+                    {% if conversation_message.text %}{{ conversation_message.text }}{% endif %}
+                        {% if conversation_message.file %}
+                            {% if conversation_message.text %}<br>{% endif %}
+                            <a href="{% url 'download_chat_file' conversation_message.id %}" class="chat-file-link" target="_blank" rel="noopener">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                                </svg>
+                                Прикріплений файл
+                            </a>
+                        {% endif %}
+                    {% if conversation_message.homework %}
+                        {% if conversation_message.text or conversation_message.file %}<br>{% endif %}
+                        <a href="{% url 'detail_homework' conversation_message.homework.id %}" class="chat-homework-link">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                            <span>{{ conversation_message.homework.title }}</span>
+                        </a>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="chat-empty">Повідомлень поки немає. Напишіть перше!</div>
+            {% endif %}
+        </div>
+
+        {% message_form_widget message_form homework_id=homework.id conversation_id=conversation.id %}
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/form_utils.js' %}"></script>
+<script>
+    initFileList('submissionFiles', 'submissionFileList', 7, 'submissionSubmitBtn', 'submissionFileHint');
+    autoGrowTextarea('{{ homework_form.text.id_for_label }}', 240);
+
+    const submissionForm = document.getElementById('submissionForm');
+    if (submissionForm) {
+        const submissionSubmitBtn = document.getElementById('submissionSubmitBtn');
+        const originalSubmissionSubmitLabel = submissionSubmitBtn.textContent;
+
+        submissionForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const fileInput = document.getElementById('submissionFiles');
+            const files = Array.from(fileInput.files);
+            const csrfToken = submissionForm.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            submissionSubmitBtn.disabled = true;
+            submissionSubmitBtn.textContent = files.length ? 'Завантаження...' : 'Здача...';
+
+            try {
+                const uploadedKeys = [];
+
+                if (files.length) {
+                    const urlResponse = await fetch("{% url 'submission_upload_url' homework.id %}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken,
+                        },
+                        body: JSON.stringify({ filenames: files.map((f) => f.name) }),
+                    });
+
+                    if (!urlResponse.ok) throw new Error('upload-url request failed');
+                    const { uploads } = await urlResponse.json();
+
+                    for (let i = 0; i < files.length; i++) {
+                        const { upload_url, content_type, key } = uploads[i];
+                        const putResponse = await fetch(upload_url, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': content_type },
+                            body: files[i],
+                        });
+                        if (!putResponse.ok) throw new Error(`upload failed: ${files[i].name}`);
+                        uploadedKeys.push(key);
+                    }
+                }
+
+                const formData = new FormData(submissionForm);
+                formData.delete('files');
+                uploadedKeys.forEach((key) => formData.append('uploaded_keys', key));
+
+                const saveResponse = await fetch(submissionForm.getAttribute('action'), {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                window.location.href = saveResponse.url;
+            } catch (err) {
+                alert('Не вдалося завантажити файли. Спробуйте ще раз.');
+                submissionSubmitBtn.disabled = false;
+                submissionSubmitBtn.textContent = originalSubmissionSubmitLabel;
+            }
+        });
+    }
+</script>
+{% endblock %}

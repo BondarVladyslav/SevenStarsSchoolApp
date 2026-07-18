@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Вхід — Seven Stars School{% endblock %}
+
+{% block extra_css %}
+        /* LOGIN */
+        .login-wrap {
+            min-height: calc(100vh - 80px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 140px 20px 80px;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 420px;
+            background: #fff;
+            border: 2px dashed var(--green);
+            border-radius: 24px;
+            padding: 48px 40px;
+        }
+
+        .login-card h1 {
+            font-family: 'Yanone Kaffeesatz', sans-serif;
+            font-weight: 600;
+            font-size: 40px;
+            color: var(--text);
+            text-align: center;
+            margin-bottom: 8px;
+            line-height: 1;
+        }
+
+        .login-subtitle {
+            text-align: center;
+            font-size: 14px;
+            color: #8F7B8C;
+            margin-bottom: 36px;
+        }
+
+        .login-field { margin-bottom: 20px; }
+
+        .login-field label {
+            display: block;
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .input-wrap { position: relative; }
+
+        .login-field input {
+            width: 100%;
+            padding: 14px 20px;
+            border: 2px solid #ECE3EA;
+            border-radius: 50px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 15px;
+            color: var(--text);
+            background: #fff;
+            transition: border-color 0.2s;
+        }
+
+        .login-field input::placeholder { color: #B5A8B3; }
+        .login-field input:focus { outline: none; border-color: var(--orange); }
+        .login-field.has-toggle input { padding-right: 52px; }
+
+        .toggle-password {
+            position: absolute;
+            top: 50%;
+            right: 18px;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            padding: 4px;
+            cursor: pointer;
+            color: #B5A8B3;
+            display: flex;
+            align-items: center;
+        }
+
+        .toggle-password:hover { color: var(--orange); }
+        .toggle-password svg { width: 20px; height: 20px; }
+
+        .btn-login-submit {
+            width: 100%;
+            background: var(--orange);
+            color: #fff;
+            border: none;
+            padding: 15px;
+            border-radius: 50px;
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+
+        .btn-login-submit:hover { opacity: 0.85; transform: scale(1.02); }
+
+        .login-note {
+            text-align: center;
+            font-size: 13px;
+            color: #8F7B8C;
+            line-height: 1.6;
+            margin-top: 24px;
+        }
+
+        .login-error {
+            background: #FDECEA;
+            border: 1px solid #F0997B;
+            color: #993C1D;
+            font-size: 13px;
+            padding: 12px 16px;
+            border-radius: 14px;
+            margin-bottom: 20px;
+        }
+
+@media (max-width: 480px) {
+    .login-wrap { padding: 110px 16px 60px; }
+    .login-card { padding: 32px 24px; border-radius: 20px; }
+    .login-card h1 { font-size: 30px; }
+}
+{% endblock %}
+
+{% block content %}
+
+<div class="login-wrap">
+    <div class="login-card">
+        <h1>Вхід</h1>
+        <p class="login-subtitle">Увійдіть до особистого кабінету</p>
+
+        {% if form.errors %}
+        <div class="login-error">Невірне ім'я або пароль. Спробуйте ще раз.</div>
+        {% endif %}
+
+        <form method="post" action="{% url 'login' %}">
+            {% csrf_token %}
+            <div class="login-field">
+                <label for="id_username">Ім'я</label>
+                <div class="input-wrap">
+                    <input type="text" id="id_username" name="username" placeholder="Введіть ім'я" autocomplete="username" required>
+                </div>
+            </div>
+
+            <div class="login-field has-toggle">
+                <label for="id_password">Пароль</label>
+                <div class="input-wrap">
+                    <input type="password" id="id_password" name="password" placeholder="Введіть пароль" autocomplete="current-password" required>
+                    <button type="button" class="toggle-password" id="togglePassword" aria-label="Показати пароль">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-login-submit">Ввійти</button>
+        </form>
+
+        <p class="login-note">Якщо забули пароль, зверніться до вчителя</p>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const toggleBtn = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('id_password');
+    if (toggleBtn && passwordInput) {
+        toggleBtn.addEventListener('click', () => {
+            const isHidden = passwordInput.type === 'password';
+            passwordInput.type = isHidden ? 'text' : 'password';
+            toggleBtn.setAttribute('aria-label', isHidden ? 'Приховати пароль' : 'Показати пароль');
+        });
+    }
+</script>
+{% endblock %}

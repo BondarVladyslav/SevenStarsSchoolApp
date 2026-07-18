@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if is_edit %}{{ level.name }}{% else %}Новий рівень{% endif %} — Seven Stars School{% endblock %}
+
+{% block content %}
+
+<div class="detail-header">
+    {% if level %}
+    <a href="{% url 'edit_subject' level.subject_id %}" class="back-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        {{ level.subject.name }}
+    </a>
+    {% endif %}
+    <h1>{% if is_edit %}{{ level.name }}{% else %}Створити рівень{% endif %}</h1>
+</div>
+
+<div class="detail-single">
+    <div class="content-card">
+        <div class="panel-title">Дані рівня</div>
+
+        <form method="post">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="field-error">{{ form.non_field_errors }}</div>
+            {% endif %}
+            <input type="hidden" name="action" value="save">
+            {% if subject_id %}
+                <input type="hidden" name="subject_id" value="{{ subject_id }}">
+            {% endif %}
+
+            <div class="form-field">
+                <label for="{{ form.subject.id_for_label }}">Предмет</label>
+                {{ form.subject }}
+                {% if form.subject.errors %}<div class="field-error">{{ form.subject.errors|first }}</div>{% endif %}
+            </div>
+
+            <div class="form-field">
+                <label for="{{ form.name.id_for_label }}">Назва рівня</label>
+                {{ form.name }}
+                {% if form.name.errors %}<div class="field-error">{{ form.name.errors|first }}</div>{% endif %}
+            </div>
+
+            <div class="form-field">
+                <label for="{{ form.order.id_for_label }}">Порядок сортування</label>
+                {{ form.order }}
+                {% if form.order.errors %}<div class="field-error">{{ form.order.errors|first }}</div>{% endif %}
+                <p class="form-hint">Менше число — вище в списку (наприклад, А1 = 1, А2 = 2, В1 = 3)</p>
+            </div>
+
+            <button type="submit" class="btn-block">
+                {% if is_edit %}Зберегти зміни{% else %}Створити рівень{% endif %}
+            </button>
+        </form>
+
+        {% if is_edit %}
+        <div class="danger-zone-footer">
+            <form method="post" data-confirm-delete>
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_level">
+                <button type="submit" class="btn-danger-outline">Видалити рівень</button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.querySelectorAll('[data-confirm-delete]').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            if (!window.confirm('Ви впевнені? Цю дію не можна скасувати.')) {
+                event.preventDefault();
+            }
+        });
+    });
+</script>
+{% endblock %}

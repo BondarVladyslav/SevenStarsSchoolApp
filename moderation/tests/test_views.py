@@ -1,0 +1,383 @@
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+from django.urls import reverse
+
+from courses.models import Group, Level, Subject
+from users.models import Parent, Student, Teacher
+
+User = get_user_model()
+
+
+class ModerationAccessControlTests(TestCase):
+
+    def setUp(self):
+        self.superuser = User.objects.create_user(
+            username='admin1', password='pass12345', is_superuser=True, is_staff=True,
+        )
+        self.regular_user = User.objects.create_user(username='regular1', password='pass12345')
+
+    def test_anonymous_user_redirected_to_login(self):
+        response = self.client.get(reverse('moderation_dashboard'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse('login'), response.url)
+
+    def test_non_superuser_redirected_to_login(self):
+        self.client.force_login(self.regular_user)
+        response = self.client.get(reverse('moderation_dashboard'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse('login'), response.url)
+
+    def test_superuser_can_access_dashboard(self):
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse('moderation_dashboard'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'moderation/dashboard.html')
+
+
+class ModerationDashboardViewTests(TestCase):
+    def setUp(self):
+        self.superuser = User.objects.create_user(
+            username='admin1', password='pass12345', is_superuser=True, is_staff=True,
+        )
+        self.client.force_login(self.superuser)
+
+    def test_dashboard_lists_groups_students_teachers(self):
+        subject = Subject.objects.create(name='Математика')
+        group = Group.objects.create(name='Group A', subject=subject)
+
+        teacher_user = User.objects.create_user(username='teacher1', password='pass12345')
+        teacher = Teacher.objects.create(user=teacher_user)
+
+        student_user = User.objects.create_user(username='student1', password='pass12345')
+        student = Student.objects.create(user=student_user)
+
+        response = self.client.get(reverse('moderation_dashboard'))
+
+        self.assertIn(group, response.context['groups'])
+        self.assertIn(teacher, response.context['teachers'])
+        self.assertIn(student, response.context['students'])
+
+
+class GroupCreateOrEditViewTests(TestCase):
+    def setUp(self):
+        self.superuser = User.objects.create_user(
+            username='admin1', password='pass12345', is_superuser=True, is_staff=True,
+        )
+        self.client.force_login(self.superuser)
+        self.subject = Subject.objects.create(name='Математика')
+        teacher_user = User.objects.create_user(username='teacher1', password='pass12345')
+        self.teacher = Teacher.objects.create(user=teacher_user)
+
+    def test_create_group(self):
+        response = self.client.post(reverse('create_group'), {
+            'action': 'change_group_name',
+            'name': 'New Group',
+            'teacher': self.teacher.id,
+            'subject': self.subject.id,
+        })
+
+        self.assertRedirects(response, reverse('moderation_dashboard'))
+        self.assertTrue(Group.objects.filter(name='New Group').exists())
+
+    def test_edit_group(self):
+        group = Group.objects.create(name='Old name', subject=self.subject)
+
+        response = self.client.post(reverse('edit_group', args=[group.id]), {
+            'action': 'change_group_name',
+            'name': 'Updated name',
+            'teacher': self.teacher.id,
+            'subject': self.subject.id,
+        })
+
+        self.assertRedirects(response, reverse('moderation_dashboard'))
+        group.refresh_from_db()
+        self.assertEqual(group.name, 'Updated name')
+
+    def test_delete_group(self):
+        group = Group.objects.create(name='To delete', subject=self.subject)
+
+        response = self.client.post(reverse('edit_group', args=[group.id]), {'action': 'delete_group'})
+
+        self.assertRedirects(response, reverse('moderation_dashboard'))
+        self.assertFalse(Group.objects.filter(id=group.id).exists())
+
+
+class StudentEditOrCreateViewTests(TestCase):
+    def setUp(self):
+        self.superuser = User.objects.create_user(
+            username='admin1', password='pass12345', is_superuser=True, is_staff=True,
+        )
+        self.client.force_login(self.superuser)
+
+    def test_create_student_generates_password_and_user(self):
+        response = self.client.post(reverse('create_student'), {
+            'action': 'change_student_info',
+            'first_name': 'Іван',
+            'last_name': 'Петров',
+        })
+
+        student = Student.objects.get()
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('edit_student', args=[student.id]))
+        self.assertEqual(student.user.first_name, 'Іван')
+
+        follow_up = self.client.get(reverse('edit_student', args=[student.id]))
+        self.assertIsNotNone(follow_up.context['generated_password'])
+
+    def test_edit_existing_student(self):
+        user = User.objects.create_user(username='student1', password='pass12345')
+        student = Student.objects.create(user=user)
+
+        response = self.client.post(reverse('edit_student', args=[student.id]), {
+            'action': 'change_student_info',
+            'first_name': 'Оновлене',
+            'last_name': 'Імʼя',
+        })
+
+        self.assertRedirects(response, reverse('moderation_dashboard'))
+        user.refresh_from_db()
+        self.assertEqual(user.first_name, 'Оновлене')
+
+    def test_delete_student(self):
+        user = User.objects.create_user(username='student2', password='pass12345')
+        student = Student.objects.create(user=user)
+
+        response = self.client.post(reverse('edit_student', args=[student.id]), {'action': 'delete_student'})
+
+        self.assertRedirects(response, reverse('moderation_dashboard'))
+        self.assertFalse(Student.objects.filter(id=student.id).exists())
+
+    def test_reset_password_changes_hash(self):
+        user = User.objects.create_user(username='student3', password='pass12345')
+        student = Student.objects.create(user=user)
+        old_hash = user.password
+
+        response = self.client.post(reverse('edit_student', args=[student.id]), {'action': 'reset_password'})
+
+        user.refresh_from_db()
+        self.assertNotEqual(user.password, old_hash)
+        self.assertIsNotNone(response.context['generated_password'])
+
+    def test_add_and_remove_student_from_group(self):
+        subject = Subject.objects.create(name='Математика')
+        group = Group.objects.create(name='Group A', subject=subject)
+        user = User.objects.create_user(username='student4', password='pass12345')
+        student = Student.objects.create(user=user)
+
+        self.client.post(reverse('edit_student', args=[student.id]), {
+            'action': 'add_student_to_group', 'group_id': group.id,
+        })
+        self.assertTrue(student.groups.filter(pk=group.pk).exists())
+
+        self.client.post(reverse('edit_student', args=[student.id]), {
+            'action': 'remove_student_from_group', 'group_id': group.id,
+        })
+        self.assertFalse(student.groups.filter(pk=group.pk).exists())
+
+    def test_add_and_remove_parent_from_student(self):
+        student_user = User.objects.create_user(username='student5', password='pass12345')
+        student = Student.objects.create(user=student_user)
+        parent_user = User.objects.create_user(username='parent1', password='pass12345')
+        parent = Parent.objects.create(user=parent_user)
+
+        self.client.post(reverse('edit_student', args=[student.id]), {
+            'action': 'add_parent_to_student', 'parent_id': parent.id,
+        })
+        self.assertTrue(student.parents.filter(pk=parent.pk).exists())
+
+        self.client.post(reverse('edit_student', args=[student.id]), {
+            'action': 'remove_parent_from_student', 'parent_id': parent.id,
+        })
+        self.assertFalse(student.parents.filter(pk=parent.pk).exists())
+
+
+class ParentEditOrCreateViewTests(TestCase):
+    def setUp(self):
+        self.superuser = User.objects.create_user(
+            username='admin1', password='pass12345', is_superuser=True, is_staff=True,
+        )
+        self.client.force_login(self.superuser)
+
+    def test_create_parent_links_to_student_via_query_param(self):
+        student_user = User.objects.create_user(username='student1', password='pass12345')
+        student = Student.objects.create(user=student_user)
+
+        response = self.client.post(f"{reverse('create_parent')}?student_id={student.id}", {
+            'action': 'change_parent_info',
+            'first_name': 'Марія',
+            'last_name': 'Іванова',
+            'student_id': student.id,
+        })
+
+        parent = Parent.objects.get()
+        self.assertIn(str(parent.id), response.url)
+        self.assertTrue(parent.children.filter(pk=student.pk).exists())
+
+    def test_delete_parent_redirects_to_student_when_provided(self):
+        parent_user = User.objects.create_user(username='parent1', password='pass12345')
+        parent = Parent.objects.create(user=parent_user)
+        student_user = User.objects.create_user(username='student2', password='pass12345')
+        student = Student.objects.create(user=student_user)
+
+        response = self.client.post(
+            f"{reverse('edit_parent', args=[parent.id])}?student_id={student.id}",
+            {'action': 'delete_parent', 'student_id': student.id},
+        )
+
+        self.assertRedirects(response, reverse('edit_student', args=[student.id]))
+        self.assertFalse(Parent.objects.filter(id=parent.id).exists())
+
+
+class TeacherEditOrCreateViewTests(TestCase):
+    def setUp(self):
+        self.superuser = User.objects.create_user(
+            username='admin1', password='pass12345', is_superuser=True, is_staff=True,
+        )
+        self.client.force_login(self.superuser)
+
+    def test_create_teacher(self):
+        response = self.client.post(reverse('create_teacher'), {
+            'action': 'change_teacher_info',
+            'first_name': 'Петро',
+            'last_name': 'Сидоренко',
+            'groups': [],
+        })
+
+        teacher = Teacher.objects.get()
+        self.assertRedirects(response, reverse('edit_teacher', args=[teacher.id]))
+
+    def test_delete_teacher(self):
+        user = User.objects.create_user(username='teacher1', password='pass12345')
+        teacher = Teacher.objects.create(user=user)
+
+        response = self.client.post(reverse('edit_teacher', args=[teacher.id]), {'action': 'delete_teacher'})
+
+        self.assertRedirects(response, reverse('moderation_dashboard'))
+        self.assertFalse(Teacher.objects.filter(id=teacher.id).exists())
+
+
+class SubjectAndLevelViewTests(TestCase):
+    def setUp(self):
+        self.superuser = User.objects.create_user(
+            username='admin1', password='pass12345', is_superuser=True, is_staff=True,
+        )
+        self.client.force_login(self.superuser)
+
+    def test_create_subject(self):
+        response = self.client.post(reverse('create_subject'), {'action': 'save', 'name': 'Хімія'})
+        self.assertRedirects(response, reverse('moderation_dashboard'))
+        self.assertTrue(Subject.objects.filter(name='Хімія').exists())
+
+    def test_delete_subject(self):
+        subject = Subject.objects.create(name='Біологія')
+        response = self.client.post(reverse('edit_subject', args=[subject.id]), {'action': 'delete_subject'})
+        self.assertRedirects(response, reverse('moderation_dashboard'))
+        self.assertFalse(Subject.objects.filter(id=subject.id).exists())
+
+    def test_create_level(self):
+        subject = Subject.objects.create(name='Математика')
+        response = self.client.post(reverse('create_level'), {
+            'action': 'save', 'subject': subject.id, 'name': 'Advanced', 'order': 1,
+        })
+        level = Level.objects.get()
+        self.assertRedirects(response, reverse('edit_subject', args=[subject.id]))
+        self.assertEqual(level.name, 'Advanced')
+
+    def test_delete_level_redirects_to_subject(self):
+        subject = Subject.objects.create(name='Математика')
+        level = Level.objects.create(subject=subject, name='Beginner')
+
+        response = self.client.post(reverse('edit_level', args=[level.id]), {'action': 'delete_level'})
+
+        self.assertRedirects(response, reverse('edit_subject', args=[subject.id]))
+        self.assertFalse(Level.objects.filter(id=level.id).exists())
+
+
+class ManageGroupScheduleViewTests(TestCase):
+    def setUp(self):
+        self.superuser = User.objects.create_user(
+            username='admin1', password='pass12345', is_superuser=True, is_staff=True,
+        )
+        self.client.force_login(self.superuser)
+        subject = Subject.objects.create(name='Математика')
+        self.group = Group.objects.create(name='Group A', subject=subject)
+
+    def test_add_lesson(self):
+        response = self.client.post(reverse('manage_group_schedule', args=[self.group.id]), {
+            'action': 'add_lesson',
+            'weekday': 0,
+            'start_time': '10:00',
+            'end_time': '11:00',
+        })
+
+        self.assertRedirects(response, reverse('manage_group_schedule', args=[self.group.id]))
+        self.assertEqual(self.group.lessons.count(), 1)
+
+    def test_delete_lesson(self):
+        from schedule.models import Lesson
+
+        lesson = Lesson.objects.create(group=self.group, weekday=0, start_time='10:00', end_time='11:00')
+
+        response = self.client.post(reverse('manage_group_schedule', args=[self.group.id]), {
+            'action': 'delete_lesson',
+            'lesson_id': lesson.id,
+        })
+
+        self.assertRedirects(response, reverse('manage_group_schedule', args=[self.group.id]))
+        self.assertFalse(Lesson.objects.filter(id=lesson.id).exists())
+
+
+class ScheduleExceptionsViewTests(TestCase):
+    def setUp(self):
+        self.superuser = User.objects.create_user(
+            username='admin1', password='pass12345', is_superuser=True, is_staff=True,
+        )
+        self.client.force_login(self.superuser)
+        subject = Subject.objects.create(name='Математика')
+        self.group = Group.objects.create(name='Group A', subject=subject)
+
+        from datetime import time
+        from schedule.models import Lesson
+
+        self.lesson = Lesson.objects.create(
+            group=self.group, weekday=0, start_time=time(10, 0), end_time=time(11, 0),
+        )
+
+    def test_add_cancelled_exception(self):
+        from django.utils import timezone
+
+        today = timezone.localdate()
+        monday = today - timezone.timedelta(days=today.weekday())
+
+        response = self.client.post(reverse('manage_schedule_exceptions', args=[self.group.id]), {
+            'action': 'add_exception',
+            'lesson_occurrence': f'{self.lesson.id}_{monday.isoformat()}',
+            'exception_type': 'cancelled',
+        })
+
+        self.assertRedirects(response, reverse('manage_schedule_exceptions', args=[self.group.id]))
+
+        from schedule.models import ScheduleException
+        self.assertTrue(
+            ScheduleException.objects.filter(lesson=self.lesson, original_date=monday).exists()
+        )
+
+    def test_add_exception_without_data_is_bad_request(self):
+        response = self.client.post(reverse('manage_schedule_exceptions', args=[self.group.id]), {
+            'action': 'add_exception',
+        })
+        self.assertEqual(response.status_code, 400)
+
+    def test_rescheduled_exception_without_new_date_is_rejected(self):
+        from django.utils import timezone
+
+        today = timezone.localdate()
+        monday = today - timezone.timedelta(days=today.weekday())
+
+        response = self.client.post(reverse('manage_schedule_exceptions', args=[self.group.id]), {
+            'action': 'add_exception',
+            'lesson_occurrence': f'{self.lesson.id}_{monday.isoformat()}',
+            'exception_type': 'rescheduled',
+        })
+
+        self.assertEqual(response.status_code, 400)

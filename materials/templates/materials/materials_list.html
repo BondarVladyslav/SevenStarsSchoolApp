@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load file_extras %}
+
+{% block title %}Додаткові матеріали — Seven Stars School{% endblock %}
+
+{% block extra_css %}
+        .material-section-title {
+            font-family: 'Yanone Kaffeesatz', sans-serif;
+            font-weight: 600;
+            font-size: 28px;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .material-section-group {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            color: #8F7B8C;
+            margin-bottom: 16px;
+        }
+
+        .material-card {
+            background: #fff;
+            border: 2px solid #F0EBEF;
+            border-radius: 16px;
+            padding: 20px 24px;
+            margin-bottom: 16px;
+        }
+
+        .material-title {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            font-size: 16px;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .material-description {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            color: var(--text);
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+
+        .material-section {
+            margin-bottom: 32px;
+        }
+        .material-card-link {
+            display: block;
+            text-decoration: none;
+            transition: border-color 0.2s;
+        }
+
+        .material-card-link:hover {
+            border-color: var(--orange);
+        }
+
+        .material-file-count {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            color: #8F7B8C;
+            margin-top: 4px;
+        }
+
+        .material-card-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+
+        .material-card-actions form {
+            display: inline-flex;
+            margin: 0;
+        }
+{% endblock %}
+
+{% block content %}
+
+<div class="detail-header">
+    <h1>Додаткові матеріали</h1>
+</div>
+
+<div class="detail-single">
+    <div class="detail-main">
+
+        {% if sections %}
+            <div class="list-filter">
+                <svg class="searchable-select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" class="searchable-select-input" id="materialsFilterInput" placeholder="Пошук матеріалів..." autocomplete="off">
+            </div>
+
+            {% for section in sections %}
+            <div class="material-section">
+                <div class="material-section-title">
+                    {{ section.subject.name }}{% if section.level %} — {{ section.level.name }}{% endif %}
+                </div>
+                {% if section.groups %}
+                <div class="material-section-group">
+                    Групи: {% for group in section.groups %}{{ group.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                </div>
+                {% endif %}
+
+                {% if section.materials %}
+                    {% for material in section.materials %}
+                    {% if user.is_superuser %}
+                    <div class="material-card">
+                        <a href="{% url 'material_detail' material.id %}" class="material-title" style="display: block; text-decoration: none;">{{ material.title }}</a>
+                        <div class="material-file-count">{{ material.files.count }} файл{{ material.files.count|pluralize:",ів" }}</div>
+                        <div class="material-card-actions">
+                            <a href="{% url 'edit_material' material.id %}" class="btn-outline">Редагувати</a>
+                            <form method="post" action="{% url 'edit_material' material.id %}" data-confirm-delete>
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="delete_material">
+                                <button type="submit" class="btn-danger-outline">Видалити</button>
+                            </form>
+                        </div>
+                    </div>
+                    {% else %}
+                    <a href="{% url 'material_detail' material.id %}" class="material-card material-card-link">
+                        <div class="material-title">{{ material.title }}</div>
+                        <div class="material-file-count">{{ material.files.count }} файл{{ material.files.count|pluralize:",ів" }}</div>
+                    </a>
+                    {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <div class="list-card-empty">Поки що немає матеріалів під цю групу.</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="list-card-empty">У вас ще нема груп</div>
+        {% endif %}
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/searchable_select.js' %}"></script>
+<script>
+    initSectionedListFilter('materialsFilterInput', {
+        sectionSelector: '.material-section',
+        itemSelector: '.material-card',
+        emptyMessage: 'Матеріалів не знайдено.',
+    });
+
+    document.querySelectorAll('[data-confirm-delete]').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            if (!window.confirm('Ви впевнені? Цю дію не можна скасувати.')) {
+                event.preventDefault();
+            }
+        });
+    });
+</script>
+{% endblock %}

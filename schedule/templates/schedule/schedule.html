@@ -1,0 +1,268 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Розклад — Seven Stars School{% endblock %}
+
+{% block extra_css %}
+        .schedule-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .schedule-day {
+            display: flex;
+            gap: 20px;
+            background: #fff;
+            border: 2px solid #F0EBEF;
+            border-radius: 16px;
+            padding: 18px 22px;
+        }
+
+        .schedule-day.is-today {
+            border-color: var(--orange);
+            background: #FFF7F5;
+        }
+
+        .schedule-day-date {
+            flex-shrink: 0;
+            width: 90px;
+            text-align: center;
+        }
+
+        .schedule-day-date-number {
+            font-family: 'Yanone Kaffeesatz', sans-serif;
+            font-size: 32px;
+            font-weight: 600;
+            color: var(--text);
+            line-height: 1;
+        }
+
+        .schedule-day-date-weekday {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            color: #8F7B8C;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+
+        .schedule-day.is-today .schedule-day-date-number,
+        .schedule-day.is-today .schedule-day-date-weekday {
+            color: var(--orange);
+        }
+
+        .schedule-day-lessons {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .schedule-lesson {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #F8F5F7;
+            border-radius: 12px;
+            padding: 10px 14px;
+        }
+
+        .schedule-lesson.status-cancelled {
+            background: #FDECEA;
+            text-decoration: line-through;
+            color: #B5A8B3;
+        }
+
+        .schedule-lesson.status-moved_away {
+            background: #FFF9E9;
+        }
+
+        .schedule-lesson.status-moved_here {
+            background: rgba(136, 192, 58, 0.12);
+        }
+
+        .schedule-lesson-time {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            font-size: 13px;
+            color: var(--orange);
+            flex-shrink: 0;
+        }
+
+        .schedule-lesson.status-cancelled .schedule-lesson-time { color: inherit; }
+
+        .schedule-lesson-group {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            color: var(--text);
+            flex: 1;
+            min-width: 0;
+        }
+
+        .schedule-lesson-badge {
+            flex-shrink: 0;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 4px 10px;
+            border-radius: 50px;
+            background: #fff;
+        }
+
+        .schedule-lesson-grade-link {
+            flex-shrink: 0;
+            margin-left: auto;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 4px 12px;
+            border-radius: 50px;
+            background: var(--orange);
+            color: #fff;
+            text-decoration: none;
+            transition: opacity 0.2s;
+        }
+
+        .schedule-lesson-grade-link:hover { opacity: 0.85; }
+
+        .schedule-lesson-grade {
+            background: rgba(136, 192, 58, 0.18);
+            color: #3B6D11;
+        }
+
+        .schedule-lesson-grade-pending {
+            background: rgba(70, 154, 253, 0.15);
+            color: #185FA5;
+        }
+
+        .schedule-lesson-participation {
+            background: rgba(112, 107, 250, 0.15);
+            color: #4B45C7;
+        }
+
+        .schedule-day-empty {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            color: #B5A8B3;
+        }
+
+        .child-switcher {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .child-switcher-btn {
+            padding: 10px 20px;
+            border-radius: 50px;
+            border: 2px solid var(--orange);
+            background: #fff;
+            color: var(--orange);
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            text-decoration: none;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .child-switcher-btn.active {
+            background: var(--orange);
+            color: #fff;
+        }
+
+    @media (max-width: 900px) {
+    .schedule-day { padding: 14px 16px; gap: 14px; }
+    .schedule-day-date { width: 60px; }
+    .schedule-day-date-number { font-size: 24px; }
+    .schedule-lesson { flex-wrap: wrap; }
+    }
+{% endblock %}
+
+{% block content %}
+
+<div class="detail-header">
+    <h1>Розклад</h1>
+    <div class="detail-meta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        {{ schedule_owner_name }}
+    </div>
+
+    {% if children %}
+    <div class="child-switcher">
+        {% for child in children %}
+        <a href="?child_id={{ child.id }}" class="child-switcher-btn{% if child.id == selected_child.id %} active{% endif %}">
+            {{ child.user.get_full_name }}
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="detail-single">
+    <div class="schedule-list">
+        {% for day in schedule %}
+        <div class="schedule-day{% if day.date == today %} is-today{% endif %}" {% if day.date == today %}id="todayCard"{% endif %}>
+            <div class="schedule-day-date">
+                <div class="schedule-day-date-number">{{ day.date|date:"d.m" }}</div>
+                <div class="schedule-day-date-weekday">{{ day.weekday_name }}</div>
+            </div>
+
+            <div class="schedule-day-lessons">
+                {% if day.lessons %}
+                    {% for entry in day.lessons %}
+                    <div class="schedule-lesson status-{{ entry.status }}">
+                        <span class="schedule-lesson-time">{{ entry.start_time|date:"H:i" }}–{{ entry.end_time|date:"H:i" }}</span>
+                        <span class="schedule-lesson-group">{{ entry.group.name }}</span>
+                        {% if entry.status == 'cancelled' %}
+                            <span class="schedule-lesson-badge">Скасовано</span>
+                        {% elif entry.status == 'moved_away' %}
+                            <span class="schedule-lesson-badge">Перенесено на {{ entry.new_date|date:"d.m" }}</span>
+                        {% elif entry.status == 'moved_here' %}
+                            <span class="schedule-lesson-badge">Перенесено з {{ entry.original_date|date:"d.m" }}</span>
+                        {% endif %}
+                        {% if entry.participation_score is not None %}
+                            <span class="schedule-lesson-badge schedule-lesson-participation">Урок: {{ entry.participation_score }}/50</span>
+                        {% endif %}
+                        {% if entry.homework %}
+                            {% if entry.homework_grade is not None %}
+                                <span class="schedule-lesson-badge schedule-lesson-grade">ДЗ: {{ entry.homework_grade }}/50</span>
+                            {% else %}
+                                <span class="schedule-lesson-badge schedule-lesson-grade-pending">ДЗ</span>
+                            {% endif %}
+                        {% endif %}
+                        {% if is_teacher_view and entry.status != 'cancelled' %}
+                            <a href="{% url 'grade_lesson_participation' entry.lesson.id day.date|date:'Y-m-d' %}" class="schedule-lesson-grade-link">Оцінити</a>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="schedule-day-empty">Занять немає</div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const todayCard = document.getElementById('todayCard');
+    if (todayCard) {
+        todayCard.scrollIntoView({ block: 'center' });
+    }
+</script>
+{% endblock %}

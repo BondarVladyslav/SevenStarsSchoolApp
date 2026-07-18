@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load chat_tags %}
+
+{% block title %}{{ student.user.get_full_name }} — Seven Stars School{% endblock %}
+
+{% block extra_css %}
+        .danger-zone {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+{% endblock %}
+
+{% block content %}
+
+<div class="detail-header">
+    <a href="{% url 'detail_group' group.id %}" class="back-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        {{ group }}
+    </a>
+    <h1>{{ student.user.get_full_name }}</h1>
+    <div class="detail-meta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+            <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+        </svg>
+        Учень
+    </div>
+</div>
+
+<div class="detail-layout">
+
+    <div class="detail-main">
+
+        <div class="content-card">
+            <div class="panel-title">Здані роботи</div>
+
+            {% if student_homeworks %}
+                {% for homework in student_homeworks %}
+                <a href="{% url 'detail_submission' homework.id %}" class="list-card">
+                    <div class="list-card-top">
+                        <span class="list-card-title">{{ homework.homework.title }}</span>
+                        {% if homework.status == 'pending' %}
+                            <span class="status-badge status-pending">На перевірці</span>
+                        {% elif homework.status == 'checked' %}
+                            <span class="status-badge status-checked">{{ homework.grade }}%</span>
+                        {% elif homework.status == 'need_revision' %}
+                            <span class="status-badge status-revision">Потребує виправлень</span>
+                        {% endif %}
+                    </div>
+                    {% if homework.text %}
+                        <div class="list-card-preview">{{ homework.text|truncatechars:40 }}</div>
+                    {% endif %}
+                </a>
+                {% endfor %}
+            {% else %}
+                <div class="list-card-empty">Учень ще не здавав робіт.</div>
+            {% endif %}
+        </div>
+
+        <div class="content-card">
+            <div class="panel-title">Керування обліковим записом</div>
+
+            <div class="danger-zone">
+                <button type="button" class="btn-outline" id="showResetFormBtn">Скинути пароль</button>
+
+                <form method="post" id="removeFromGroupForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="remove_from_group">
+                    <button type="submit" class="btn-danger-outline">Видалити з групи</button>
+                </form>
+            </div>
+
+            <form method="post" id="resetPasswordForm" style="display: none; margin-top: 16px;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="reset_password">
+                <p class="prose-empty" style="margin-bottom: 12px;">
+                    Учню буде згенеровано новий пароль. Старий перестане діяти одразу.
+                </p>
+                <button type="submit" class="btn-danger-outline">Підтвердити скидання</button>
+            </form>
+
+            {% if new_password %}
+            <div class="alert-box">
+                <span class="alert-box-label">Новий пароль (збережіть — він більше не буде показаний)</span>
+                <code>{{ new_password }}</code>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <div class="chat-panel">
+        <div class="panel-title">Чат з учнем</div>
+
+        <div class="chat-messages custom-scroll" id="chatMessages">
+            {% if conversation_messages %}
+                {% for conversation_message in conversation_messages%}
+                <div class="chat-bubble {% if conversation_message.sender == request.user %}own{% else %}other{% endif %}">
+                    <div class="chat-sender">{{ conversation_message.sender.get_full_name|default:conversation_message.sender }}</div>
+                    {% if conversation_message.text %}{{ conversation_message.text }}{% endif %}
+                        {% if conversation_message.file %}
+                            {% if conversation_message.text %}<br>{% endif %}
+                            <a href="{% url 'download_chat_file' conversation_message.id %}" class="chat-file-link" target="_blank" rel="noopener">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                                </svg>
+                                Прикріплений файл
+                            </a>
+                        {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="chat-empty">Повідомлень поки немає. Напишіть перше!</div>
+            {% endif %}
+        </div>
+
+        {% message_form_widget form conversation_id=conversation.id %}
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const showResetFormBtn = document.getElementById('showResetFormBtn');
+    const resetPasswordForm = document.getElementById('resetPasswordForm');
+    if (showResetFormBtn && resetPasswordForm) {
+        showResetFormBtn.addEventListener('click', () => {
+            resetPasswordForm.style.display = 'block';
+            showResetFormBtn.style.display = 'none';
+        });
+    }
+</script>
+{% endblock %}

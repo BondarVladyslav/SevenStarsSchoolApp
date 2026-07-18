@@ -1,0 +1,312 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Панель модерації — Seven Stars School{% endblock %}
+
+{% block extra_css %}
+        .dashboard-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .group-card-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .group-card-title {
+            font-family: 'Yanone Kaffeesatz', sans-serif;
+            font-weight: 600;
+            font-size: 26px;
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .group-card-title:hover { color: var(--orange); }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            align-items: start;
+        }
+
+        .dashboard-tabs {
+            display: none;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .dashboard-tab-btn {
+            flex: 1;
+            padding: 10px 12px;
+            border-radius: 50px;
+            border: 2px solid var(--orange);
+            background: #fff;
+            color: var(--orange);
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            cursor: pointer;
+            text-align: center;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .dashboard-tab-btn.active {
+            background: var(--orange);
+            color: #fff;
+        }
+
+    @media (max-width: 1200px) {
+    .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
+    .dashboard-groups { grid-column: span 2; }
+    }
+
+    @media (max-width: 900px) {
+    .dashboard-tabs { display: flex; }
+    .dashboard-grid { grid-template-columns: 1fr; gap: 16px; }
+    .dashboard-groups { grid-column: span 1; }
+    .dashboard-grid > .content-card { display: none; }
+    .dashboard-grid[data-active-tab="groups"] .dashboard-groups { display: block; }
+    .dashboard-grid[data-active-tab="students"] .dashboard-students { display: block; }
+    .dashboard-grid[data-active-tab="teachers"] .dashboard-teachers { display: block; }
+    .dashboard-actions .btn-outline { flex: 1 1 auto; justify-content: center; }
+    }
+{% endblock %}
+
+{% block content %}
+
+<div class="detail-header">
+    <h1>Панель модерації</h1>
+    <div class="dashboard-actions">
+        <a href="{% url 'create_student' %}" class="btn-outline">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Створити студента
+        </a>
+        <a href="{% url 'create_group' %}" class="btn-outline">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Створити групу
+        </a>
+        <a href="{% url 'create_teacher' %}" class="btn-outline">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Створити вчителя
+        </a>
+        <a href="{% url 'materials_list' %}" class="btn-outline">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
+            Матеріали
+        </a>
+        <a href="{% url 'create_subject' %}" class="btn-outline">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Створити предмет
+        </a>
+        <a href="{% url 'create_level' %}" class="btn-outline">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Створити рівень
+        </a>
+        <a href="{% url 'create_material' %}" class="btn-outline">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Створити матеріал
+        </a>
+    </div>
+    <label class="filter-toggle" style="margin-top: 16px; margin-bottom: 0;">
+        <input type="checkbox" id="showUsernamesToggle">
+        Показати юзернейм
+    </label>
+</div>
+
+<div class="detail-single">
+    <div class="dashboard-tabs">
+        <button type="button" class="dashboard-tab-btn active" data-tab="groups">Групи</button>
+        <button type="button" class="dashboard-tab-btn" data-tab="students">Студенти</button>
+        <button type="button" class="dashboard-tab-btn" data-tab="teachers">Вчителі</button>
+    </div>
+
+    <div class="dashboard-grid" data-active-tab="groups">
+
+        <div class="content-card dashboard-groups">
+            <div class="panel-title">Групи</div>
+
+            {% if groups %}
+                <div class="list-filter">
+                    <svg class="searchable-select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" class="searchable-select-input" id="groupsFilterInput" placeholder="Пошук груп, вчителів, учнів..." autocomplete="off">
+                </div>
+
+                <div id="groupsList">
+                    {% for group in groups %}
+                    <div class="content-card group-item" style="border: 2px solid #F0EBEF; margin-bottom: 16px;">
+                        <div class="group-card-header">
+                            <a href="{% url 'edit_group' group.id %}" class="group-card-title">{{ group.name }}</a>
+                            {% if group.teacher %}
+                                <a href="{% url 'edit_teacher' group.teacher.id %}" class="entity-row-subtitle" style="text-decoration: underline;">{{ group.teacher.user.get_full_name }}</a>
+                            {% else %}
+                                <span class="entity-row-subtitle">Без вчителя</span>
+                            {% endif %}
+                        </div>
+
+                        {% if group.students.all %}
+                            {% for student in group.students.all %}
+                            <div class="entity-row">
+                                <div class="entity-row-main">
+                                    <span class="entity-row-title" style="text-decoration: none;">{{ student.user.get_full_name }}</span>
+                                    <span class="entity-row-username">{{ student.user.username }}</span>
+                                </div>
+                                <div class="entity-row-actions">
+                                    <a href="{% url 'edit_student' student.id %}" class="btn-outline">Редагувати</a>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="list-card-empty">У групі поки немає учнів.</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="list-card-empty">Груп поки немає.</div>
+            {% endif %}
+        </div>
+
+        <div class="content-card dashboard-students">
+            <div class="panel-title">Студенти</div>
+
+            {% if students %}
+                <label class="filter-toggle">
+                    <input type="checkbox" id="studentsGroupOnlyToggle">
+                    Тільки без групи
+                </label>
+
+                <div class="list-filter">
+                    <svg class="searchable-select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" class="searchable-select-input" id="studentsFilterInput" placeholder="Пошук студентів..." autocomplete="off">
+                </div>
+
+                <div id="studentsList">
+                    {% for student in students %}
+                    <div class="entity-row student-item" data-has-group="{% if student.groups.all %}true{% else %}false{% endif %}">
+                        <div class="entity-row-main">
+                            <span class="entity-row-title" style="text-decoration: none;">{{ student.user.get_full_name }}</span>
+                            <span class="entity-row-username">{{ student.user.username }}</span>
+                        </div>
+                        <div class="entity-row-actions">
+                            <a href="{% url 'edit_student' student.id %}" class="btn-outline">Редагувати</a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="list-card-empty">Студентів поки немає.</div>
+            {% endif %}
+        </div>
+
+        <div class="content-card dashboard-teachers">
+            <div class="panel-title">Вчителі</div>
+
+            {% if teachers %}
+                <label class="filter-toggle">
+                    <input type="checkbox" id="teachersGroupOnlyToggle">
+                    Тільки без груп
+                </label>
+
+                <div class="list-filter">
+                    <svg class="searchable-select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" class="searchable-select-input" id="teachersFilterInput" placeholder="Пошук вчителів..." autocomplete="off">
+                </div>
+
+                <div id="teachersList">
+                    {% for teacher in teachers %}
+                    <div class="entity-row teacher-item" data-has-group="{% if teacher.groups.all %}true{% else %}false{% endif %}">
+                        <div class="entity-row-main">
+                            <span class="entity-row-title" style="text-decoration: none;">{{ teacher.user.get_full_name }}</span>
+                            <span class="entity-row-username">{{ teacher.user.username }}</span>
+                        </div>
+                        <div class="entity-row-actions">
+                            <a href="{% url 'edit_teacher' teacher.id %}" class="btn-outline">Редагувати</a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="list-card-empty">Вчителів поки немає.</div>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/searchable_select.js' %}"></script>
+<script>
+    document.querySelectorAll('.dashboard-tab-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.dashboard-tab-btn').forEach((b) => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.querySelector('.dashboard-grid').dataset.activeTab = btn.dataset.tab;
+        });
+    });
+
+    document.getElementById('showUsernamesToggle').addEventListener('change', (event) => {
+        document.body.classList.toggle('show-usernames', event.target.checked);
+    });
+
+    initListFilter('groupsFilterInput', '.group-item', {
+        emptyContainer: '#groupsList',
+        emptyMessage: 'Нічого не знайдено за цим запитом.',
+    });
+
+    initEntityListFilter({
+        searchInputId: 'studentsFilterInput',
+        checkboxId: 'studentsGroupOnlyToggle',
+        itemsSelector: '.student-item',
+        emptyContainer: '#studentsList',
+        emptyMessage: 'Студентів не знайдено.',
+    });
+
+    initEntityListFilter({
+        searchInputId: 'teachersFilterInput',
+        checkboxId: 'teachersGroupOnlyToggle',
+        itemsSelector: '.teacher-item',
+        emptyContainer: '#teachersList',
+        emptyMessage: 'Вчителів не знайдено.',
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Розклад — Seven Stars School{% endblock %}
+
+{% block extra_css %}
+        .calendar-wrapper {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(130px, 1fr));
+            gap: 8px;
+            min-width: 910px;
+        }
+
+        .calendar-weekday {
+            text-align: center;
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: #8F7B8C;
+            padding: 8px 0;
+        }
+
+        .calendar-day {
+            background: #fff;
+            border: 2px solid #F0EBEF;
+            border-radius: 12px;
+            padding: 10px;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .calendar-day.is-today {
+            border-color: var(--orange);
+            background: #FFF7F5;
+        }
+
+        .calendar-day-number {
+            font-family: 'Yanone Kaffeesatz', sans-serif;
+            font-weight: 600;
+            font-size: 20px;
+            color: var(--text);
+            line-height: 1;
+        }
+
+        .calendar-day.is-today .calendar-day-number { color: var(--orange); }
+
+        .calendar-lesson {
+            background: #F8F5F7;
+            border-radius: 8px;
+            padding: 5px 8px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+
+        .calendar-lesson.status-cancelled {
+            background: #FDECEA;
+            text-decoration: line-through;
+            color: #B5A8B3;
+        }
+
+        .calendar-lesson.status-moved_away { background: #FFF9E9; }
+        .calendar-lesson.status-moved_here { background: rgba(136, 192, 58, 0.12); }
+
+        .calendar-lesson-time {
+            font-weight: 700;
+            color: var(--orange);
+        }
+
+        .calendar-lesson.status-cancelled .calendar-lesson-time { color: inherit; }
+
+        .calendar-lesson-group {
+            color: var(--text);
+            display: block;
+        }
+
+        .calendar-lesson-grade {
+            display: inline-block;
+            margin-top: 3px;
+            padding: 2px 6px;
+            border-radius: 50px;
+            background: rgba(136, 192, 58, 0.18);
+            color: #3B6D11;
+            font-weight: 700;
+            font-size: 10px;
+        }
+
+        .calendar-lesson-grade-pending {
+            background: rgba(70, 154, 253, 0.15);
+            color: #185FA5;
+        }
+
+        .calendar-lesson-participation {
+            background: rgba(112, 107, 250, 0.15);
+            color: #4B45C7;
+        }
+
+        .child-switcher {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .child-switcher-btn {
+            padding: 10px 20px;
+            border-radius: 50px;
+            border: 2px solid var(--orange);
+            background: #fff;
+            color: var(--orange);
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            text-decoration: none;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .child-switcher-btn.active {
+            background: var(--orange);
+            color: #fff;
+        }
+
+    @media (max-width: 900px) {
+    .calendar-grid { grid-template-columns: repeat(7, minmax(110px, 1fr)); min-width: 780px; }
+    .calendar-day { min-height: 100px; padding: 8px; }
+    .calendar-day-number { font-size: 16px; }
+    }
+{% endblock %}
+
+{% block content %}
+
+<div class="detail-header">
+    <h1>Розклад</h1>
+    {% if children %}
+    <div class="child-switcher">
+        {% for child in children %}
+        <a href="?child_id={{ child.id }}" class="child-switcher-btn{% if child.id == selected_child.id %} active{% endif %}">
+            {{ child.user.get_full_name }}
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="detail-single">
+    <div class="calendar-wrapper">
+        <div class="calendar-grid">
+            <div class="calendar-weekday">Пн</div>
+            <div class="calendar-weekday">Вт</div>
+            <div class="calendar-weekday">Ср</div>
+            <div class="calendar-weekday">Чт</div>
+            <div class="calendar-weekday">Пт</div>
+            <div class="calendar-weekday">Сб</div>
+            <div class="calendar-weekday">Нд</div>
+
+            {% for week in weeks %}
+                {% for day in week %}
+                <div class="calendar-day{% if day.date == today %} is-today{% endif %}" {% if day.date == today %}id="todayCell"{% endif %}>
+                    <div class="calendar-day-number">{{ day.date|date:"d" }}</div>
+                    
+                    {% for entry in day.lessons %}
+                    <div class="calendar-lesson status-{{ entry.status }}">
+                        <span class="calendar-lesson-time">{{ entry.start_time|date:"H:i" }}</span>
+                        <span class="calendar-lesson-group">{{ entry.group.name }}</span>
+                        {% if show_combined_score %}
+                            {% if entry.combined_score is not None %}
+                                <span class="calendar-lesson-grade">Оцінка: {{ entry.combined_score }}/100%</span>
+                            {% endif %}
+                        {% else %}
+                            {% if entry.participation_score is not None %}
+                                <span class="calendar-lesson-grade calendar-lesson-participation">Урок: {{ entry.participation_score }}/50%</span>
+                            {% endif %}
+                            {% if entry.homework %}
+                                {% if entry.homework_grade is not None %}
+                                    <span class="calendar-lesson-grade">ДЗ: {{ entry.homework_grade }}/50%</span>
+                                {% else %}
+                                    <span class="calendar-lesson-grade calendar-lesson-grade-pending">ДЗ</span>
+                                {% endif %}
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const todayCell = document.getElementById('todayCell');
+    if (todayCell) {
+        todayCell.scrollIntoView({ block: 'center', inline: 'center' });
+    }
+</script>
+{% endblock %}
