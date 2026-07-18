@@ -1,0 +1,21 @@
+-r requirements.txt
+
+django-debug-toolbar==7.0.0
+pip_audit==2.10.1
+cyclonedx-python-lib==11.11.0
+packageurl-python==0.17.6
+license-expression==30.4.4
+py-serializable==2.1.0
+defusedxml==0.7.1
+tomli==2.4.1
+tomli_w==1.2.0
+pip-api==0.0.34
+pip-requirements-parser==32.0.1
+CacheControl==0.14.4
+filelock==3.29.7
+platformdirs==4.10.0
+boolean.py==5.0
+Pygments==2.20.0
+rich==15.0.0
+markdown-it-py==4.2.0
+mdurl==0.1.2
