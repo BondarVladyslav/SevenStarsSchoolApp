@@ -10,7 +10,19 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Yanone+Kaffeesatz:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        button {
+            font: inherit;
+            appearance: none;
+            -webkit-appearance: none;
+            outline: none;
+        }
 
         :root {
             --orange: #FF5731;
@@ -50,7 +62,6 @@
             flex-shrink: 0;
         }
 
-        /* HEADER */
         header {
             position: fixed;
             top: 0; left: 0; right: 0;
@@ -67,6 +78,16 @@
 
         .logo img { height: 55px; }
 
+        nav {
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-inner {
+            display: flex;
+            align-items: center;
+        }
+
         nav a {
             text-decoration: none;
             color: var(--orange);
@@ -80,7 +101,6 @@
 
         nav a:hover { opacity: 0.75; }
 
-        /* BURGER MENU (mobile) */
         .menu-toggle {
             display: none;
             align-items: center;
@@ -107,7 +127,6 @@
         .menu-toggle.open .icon-burger { display: none; }
         .menu-toggle.open .icon-close { display: block; }
 
-        /* NAV OVERLAY — dims the page behind the slide-out drawer on mobile */
         .nav-overlay {
             display: none;
         }
@@ -124,6 +143,7 @@
             font-family: 'Manrope', sans-serif;
             font-weight: 700;
             font-size: 14px;
+            line-height: 1.4;
             letter-spacing: 1px;
             text-transform: uppercase;
             padding: 10px 26px;
@@ -138,7 +158,6 @@
             transform: scale(1.03);
         }
 
-        /* PHONE BTN */
         .phone-btn {
             position: fixed;
             bottom: 32px; right: 32px;
@@ -155,7 +174,6 @@
         .phone-btn:hover { transform: scale(1.1); }
         .phone-btn svg { width: 26px; height: 26px; fill: #fff; }
 
-        /* HERO */
         .hero {
             position: relative;
             height: 100vh;
@@ -200,7 +218,6 @@
             display: block;
         }
 
-        /* SECTION HEADER */
         .section-header {
             display: flex;
             align-items: flex-end;
@@ -218,7 +235,6 @@
 
         .section-header .stars-img { height: 110px; }
 
-        /* TICKER */
         .ticker-wrap {
             overflow: hidden;
             background: var(--orange);
@@ -247,7 +263,6 @@
             100% { transform: translateX(-50%); }
         }
 
-        /* CTA */
         .cta-wrapper { padding: 60px 60px 80px; max-width: var(--max-width); margin: 0 auto; }
 
         .cta {
@@ -310,7 +325,6 @@
         .cta-contacts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
         .cta-address { font-size: 14px; line-height: 1.6; }
 
-        /* FOOTER */
         footer { background: var(--orange); padding: 28px 0; }
 
         .footer-inner {
@@ -329,10 +343,8 @@
         .footer-contacts { font-weight: 700; }
         .footer-social { display: flex; gap: 12px; }
         .footer-social img { width: 32px; height: 32px; filter: brightness(0) invert(1); }
+
         
-        /* ===== SHARED COMPONENTS ===== */
-        /* Used across group/homework/chat pages — kept here once so
-           templates don't have to redefine them in extra_css. */
 
         .panel-title {
             font-family: 'Yanone Kaffeesatz', sans-serif;
@@ -342,7 +354,6 @@
             margin-bottom: 16px;
         }
 
-        /* STATUS BADGES */
         .status-badge {
             display: inline-flex;
             align-items: center;
@@ -360,7 +371,6 @@
         .status-revision { background: rgba(249, 178, 51, 0.18); color: #854F0B; }
         .status-none     { background: #F1EFE8; color: #6F6D64; }
 
-        /* CUSTOM SCROLLBAR */
         .custom-scroll {
             scrollbar-width: thin;
             scrollbar-color: var(--orange) transparent;
@@ -374,7 +384,6 @@
         }
         .custom-scroll::-webkit-scrollbar-thumb:hover { background: #E14B26; }
 
-        /* CHAT */
         .chat-panel {
             background: #fff;
             border: 2px dashed var(--green);
@@ -484,8 +493,6 @@
             white-space: nowrap;
         }
 
-        /* MESSAGE FORM (rendered via the message_form_widget template tag) */
-/* MESSAGE FORM (rendered via the message_form_widget template tag) */
         .chat-connection-banner {
             display: none;
             padding: 8px 24px;
@@ -530,13 +537,6 @@
             margin-top: 6px;
         }
 
-        /* Hide the native file input completely — the paperclip label triggers it.
-           Two selectors on purpose: .message-form input[type="file"] catches
-           Django-rendered fields (e.g. {{ message_form.file }} inside the
-           chat widget, which we can't add a class to without touching
-           forms.py), while .file-input-hidden is a standalone class for
-           raw <input> elements written directly in other templates
-           (homework create/edit, etc.) that aren't inside .message-form. */
         .message-form input[type="file"],
         .file-input-hidden {
             position: absolute;
@@ -567,7 +567,6 @@
         .file-attach-btn:hover { opacity: 0.85; transform: scale(1.05); }
         .file-attach-btn svg { width: 18px; height: 18px; }
 
-        /* Visible focus ring when navigating to the hidden input via keyboard */
         .message-form input[type="file"]:focus-visible + .file-name-chip,
         .message-form input[type="file"]:focus + .file-name-chip,
         .file-input-hidden:focus-visible + .file-name-chip,
@@ -613,7 +612,6 @@
 
         .file-chip-remove:hover { background: var(--orange); color: #fff; }
 
-        /* Removable file list — used by the multi-file submission input */
         .file-list-selected {
             display: flex;
             flex-wrap: wrap;
@@ -682,9 +680,6 @@
             transform: none;
         }
 
-        /* DETAIL PAGE LAYOUT — header + two-column layout with a chat
-           sidebar. Used by group / homework / submission detail pages so
-           they don't each redefine the same header+grid rules. */
         .detail-header {
             max-width: var(--max-width);
             margin: 0 auto;
@@ -743,7 +738,6 @@
             align-items: start;
         }
 
-        /* Single-column variant — pages without a chat sidebar */
         .detail-single {
             max-width: var(--max-width);
             margin: 0 auto;
@@ -795,7 +789,6 @@
     .content-card { padding: 20px; border-radius: 16px; }
     }
 
-        /* GENERIC FORM FIELDS (grading forms, edit forms, etc.) */
         .form-field { margin-bottom: 18px; }
 
         .form-field > label {
@@ -834,11 +827,6 @@
 
         .form-field > textarea { resize: vertical; min-height: 90px; }
 
-        /* SEARCHABLE SELECT — text input that filters a dropdown list of
-           options, with a hidden input carrying the actual value. Used
-           wherever picking one item from a potentially long list (link an
-           existing parent/student/teacher, etc.) — nicer than a native
-           <select> once the list grows past a handful of items. */
         .searchable-select {
             position: relative;
             min-width: 0;
@@ -917,8 +905,6 @@
             color: #B5A8B3;
         }
 
-        /* FILTER TOGGLE — a single checkbox used alongside list search
-           boxes, e.g. "show only entities without a group" */
         .filter-toggle {
             display: inline-flex;
             align-items: center;
@@ -964,17 +950,12 @@
             color: #fff;
         }
 
-        /* LIST FILTER — a plain search box (no dropdown) that filters an
-           already-rendered list in place. Reuses the same input/icon look
-           as .searchable-select for visual consistency. */
         .list-filter {
             position: relative;
             min-width: 0;
             margin-bottom: 16px;
         }
 
-        /* CHECKBOX LIST — for ModelMultipleChoiceField / CheckboxSelectMultiple,
-           e.g. assigning several groups to a teacher at once */
         .checkbox-list {
             display: flex;
             flex-direction: column;
@@ -1039,7 +1020,6 @@
             border-top: 1px dashed #EDE4EC;
         }
 
-        /* FILE DOWNLOAD LIST (homework/submission attachments) */
         .file-list {
             list-style: none;
             display: flex;
@@ -1120,8 +1100,6 @@
 
         .btn-outline:hover { background: var(--orange); color: #fff; transform: scale(1.02); }
 
-        /* LIST CARD — clickable row-style card used for submission lists,
-           student lists, etc. */
         .list-card {
             display: block;
             background: #fff;
@@ -1168,9 +1146,6 @@
             border-radius: 16px;
         }
 
-        /* ENTITY ROW — a non-clickable row with a title/subtitle and a
-           separate action button (edit, etc.) — used where the whole row
-           can't just be one link, unlike .list-card */
         .entity-row {
             display: flex;
             align-items: center;
@@ -1218,7 +1193,6 @@
     .entity-row-actions .btn-outline { width: 100%; justify-content: center; }
     }
 
-        /* ALERT BOX — used for sensitive one-time reveals (e.g. reset password) */
         .alert-box {
             background: #FDECEA;
             border-left: 4px solid #E24B4A;
@@ -1253,7 +1227,6 @@
             letter-spacing: 1px;
         }
 
-        /* SIMPLE LIST PAGE — "my groups" style pages (student/teacher) */
         .groups-section {
             max-width: var(--max-width);
             margin: 0 auto;
@@ -1306,7 +1279,7 @@
 
         {% block extra_css %}{% endblock %}
     @media (max-width: 900px) {
-    /* HEADER */
+    
     header {
         padding: 12px 20px;
         height: 64px;
@@ -1322,7 +1295,38 @@
     .btn-login { padding: 8px 18px; font-size: 12px; }
     .logout-form { margin-left: 16px; }
 
-    /* HERO */
+    .btn-outline {
+        padding: 13px 28px;
+        font-size: 14px;
+    }
+    .btn-outline svg { width: 18px; height: 18px; }
+
+    .btn-danger-outline {
+        padding: 13px 28px;
+        font-size: 14px;
+    }
+
+    .btn-block {
+        padding: 17px;
+        font-size: 15px;
+    }
+
+    .message-form button {
+        padding: 14px 32px;
+        font-size: 14px;
+    }
+
+    .file-attach-btn {
+        width: 46px;
+        height: 46px;
+    }
+    .file-attach-btn svg { width: 20px; height: 20px; }
+
+    .child-switcher-btn {
+        padding: 13px 24px;
+        font-size: 14px;
+    }
+
     .hero { height: 60vh; height: 60dvh; min-height: 400px; }
 
     .hero-title-wrap {
@@ -1330,17 +1334,14 @@
         margin-top: -60px;
     }
 
-    /* SECTION HEADER */
     .section-header { flex-direction: column; align-items: flex-start; gap: 12px; margin-bottom: 32px; }
     .section-header h2 { font-size: 40px; }
     .section-header .stars-img { height: 44px; }
 
-    /* TICKER */
     .ticker-wrap { padding: 10px 0; }
     .ticker span { font-size: 13px; padding: 0 20px; }
     .ticker span::before { margin-right: 20px; }
 
-    /* CTA */
     .cta-wrapper { padding: 32px 16px 48px; }
 
     .cta {
@@ -1355,11 +1356,9 @@
     .cta-contacts-grid { grid-template-columns: 1fr; gap: 20px; }
     .cta-phone { font-size: 15px; }
 
-    /* PHONE BTN */
     .phone-btn { width: 48px; height: 48px; bottom: 16px; right: 16px; }
     .phone-btn svg { width: 22px; height: 22px; }
 
-    /* FOOTER */
     footer { padding: 24px 0; }
     .footer-inner {
         padding: 0 20px;
@@ -1372,9 +1371,7 @@
     }
 
     @media (max-width: 1024px) {
-    /* Switch the header nav into a burger-triggered side drawer:
-       items stack one per row, each with a large tap target, sliding
-       in from the right over a dimmed overlay. */
+    
     .menu-toggle { display: flex; }
 
     .nav-overlay {
@@ -1394,6 +1391,7 @@
     }
 
     nav {
+        display: block;
         position: fixed;
         top: 0;
         right: 0;
@@ -1402,18 +1400,26 @@
         width: min(78vw, 320px);
         height: 100vh;
         height: 100dvh;
-        flex-direction: column;
-        align-items: stretch;
-        justify-content: flex-start;
-        gap: 0;
         background: #fff;
-        padding: 88px 0 24px;
         box-shadow: -12px 0 32px rgba(96, 73, 93, 0.18);
-        overflow-y: auto;
+        overflow: hidden;
+        will-change: transform;
 
         transform: translateX(100%);
         transition: transform 0.3s ease;
         z-index: 300;
+    }
+
+    .nav-inner {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        gap: 0;
+        padding: 84px 0 16px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     nav.open {
@@ -1424,28 +1430,37 @@
         margin-left: 0 !important;
         width: 100%;
         display: block;
-        padding: 18px 28px;
+        padding: 14px 28px;
         border-bottom: 1px solid #F0EBEF;
-        font-size: 15px;
-        min-height: 52px;
-        line-height: 16px;
+        font-size: 18px;
+        min-height: 46px;
+        line-height: 22px;
+        touch-action: manipulation;
+        -webkit-user-select: none;
+        user-select: none;
     }
 
     nav a.btn-login,
     .logout-form {
-        margin-left: 0 !important;
-        width: 100%;
+        margin: 12px 28px 0 !important;
         border-bottom: none;
-        margin-top: 16px;
-        padding: 0 28px;
+        padding: 0;
+        min-height: 0;
     }
 
-    nav a.btn-login,
+    nav a.btn-login {
+        display: block;
+        width: calc(100% - 56px);
+        text-align: center;
+        padding: 13px 0;
+        font-size: 14px;
+    }
+
     .logout-form .btn-login {
         display: block;
         width: 100%;
         text-align: center;
-        padding: 16px 18px;
+        padding: 13px 0;
         font-size: 14px;
     }
     }
@@ -1453,7 +1468,6 @@
     @media (max-width: 480px) {
     header { padding: 10px 16px; height: 56px; }
     .logo img { height: 34px; }
-    nav a { font-size: 10px; margin-left: 10px; }
     .btn-login { padding: 7px 14px; }
     .logout-form { margin-left: 10px; }
 
@@ -1469,7 +1483,42 @@
 
     .footer-inner { padding: 0 16px; }
     }
-    
+
+    @media (hover: none) and (pointer: coarse) {
+
+        .btn-login:active,
+        .btn-block:active,
+        .file-attach-btn:active,
+        .message-form button:not(:disabled):active {
+            background: #fff;
+            color: var(--orange);
+            border: 2px solid var(--orange);
+        }
+
+        .btn-outline:active {
+            background: var(--orange);
+            color: #fff;
+            border-color: var(--orange);
+        }
+
+        .btn-danger-outline:active {
+            background: #E24B4A;
+            color: #fff;
+            border-color: #E24B4A;
+        }
+
+        .child-switcher-btn:active {
+            background: var(--orange);
+            color: #fff;
+            border-color: var(--orange);
+        }
+        .child-switcher-btn.active:active {
+            background: #fff;
+            color: var(--orange);
+            border-color: var(--orange);
+        }
+    }
+
     </style>
 </head>
 <body>
@@ -1492,6 +1541,7 @@
     </button>
 
     <nav id="siteNav">
+        <div class="nav-inner">
         <a href="{% url 'index' %}">Головна</a>
         <a href="{% url 'about' %}">Про нас</a>
         {% if user.is_authenticated %}
@@ -1514,6 +1564,7 @@
         {% else %}
             <a href="{% url 'login' %}" class="btn-login">Ввійти</a>
         {% endif %}
+        </div>
     </nav>
     <div class="nav-overlay" id="navOverlay"></div>
 </header>
@@ -1558,7 +1609,6 @@
         }, 4000);
     }
 
-    // Burger menu (mobile nav side drawer)
     const menuToggle = document.getElementById('menuToggle');
     const siteNav = document.getElementById('siteNav');
     const navOverlay = document.getElementById('navOverlay');
@@ -1577,7 +1627,6 @@
             menuToggle.classList.toggle('open', isOpen);
             menuToggle.setAttribute('aria-expanded', String(isOpen));
             if (navOverlay) navOverlay.classList.toggle('open', isOpen);
-            // Prevent the page from scrolling behind the open drawer
             document.body.style.overflow = isOpen ? 'hidden' : '';
         };
 
@@ -1597,9 +1646,6 @@
         });
     }
 
-    // Hide the floating phone button while a horizontal slider
-    // (reviews / gallery) is in view, so its fixed bottom-right hitbox
-    // doesn't sit on top of the slider's own nav arrows on mobile.
     const phoneBtn = document.getElementById('phoneBtn');
     const collideSections = document.querySelectorAll('.reviews, .gallery');
 
