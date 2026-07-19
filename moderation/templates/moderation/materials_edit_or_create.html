@@ -107,12 +107,7 @@
                             </svg>
                             {{ material_file.file.name|basename }}
                         </span>
-                        <form method="post" class="delete-file-form">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="delete_file">
-                            <input type="hidden" name="file_id" value="{{ material_file.id }}">
-                            <button type="submit" class="file-chip-remove" aria-label="Видалити файл {{ material_file.file.name|basename }}">&times;</button>
-                        </form>
+                        <button type="button" class="file-chip-remove" data-delete-file-id="{{ material_file.id }}" aria-label="Видалити файл {{ material_file.file.name|basename }}">&times;</button>
                     </div>
                     {% endfor %}
                 </div>
@@ -195,6 +190,28 @@
     const materialForm = document.getElementById('materialForm');
     const materialSubmitBtn = document.getElementById('materialSubmitBtn');
     const originalSubmitLabel = materialSubmitBtn.textContent;
+
+    document.querySelectorAll('[data-delete-file-id]').forEach((button) => {
+        button.addEventListener('click', async () => {
+            const csrfToken = materialForm.querySelector('[name=csrfmiddlewaretoken]').value;
+            const formData = new FormData();
+            formData.append('action', 'delete_file');
+            formData.append('file_id', button.dataset.deleteFileId);
+
+            button.disabled = true;
+            try {
+                const response = await fetch(window.location.href, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken },
+                    body: formData,
+                });
+                window.location.href = response.url;
+            } catch (err) {
+                alert('Не вдалося видалити файл. Спробуйте ще раз.');
+                button.disabled = false;
+            }
+        });
+    });
 
     materialForm.addEventListener('submit', async (event) => {
         event.preventDefault();
