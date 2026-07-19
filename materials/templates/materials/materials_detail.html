@@ -23,7 +23,7 @@
 <div class="detail-single">
     <div class="content-card">
         {% if material.description %}
-            <div class="prose">{{ material.description|linebreaksbr }}</div>
+            <div class="prose">{{ material.description|urlize|linebreaksbr }}</div>
         {% endif %}
 
         {% if files %}

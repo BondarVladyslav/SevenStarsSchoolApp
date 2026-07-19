@@ -53,7 +53,7 @@
 
         <div class="content-card">
             <div class="panel-title">Опис завдання</div>
-            <div class="prose">{{ homework.description|linebreaksbr }}</div>
+            <div class="prose">{{ homework.description|urlize|linebreaksbr }}</div>
         </div>
 
         <div class="content-card">
@@ -69,7 +69,7 @@
             </div>
 
             {% if submission.text %}
-                <div class="prose">{{ submission.text|linebreaksbr }}</div>
+                <div class="prose">{{ submission.text|urlize|linebreaksbr }}</div>
             {% else %}
                 <p class="prose-empty">Учень не додав текстовий опис.</p>
             {% endif %}

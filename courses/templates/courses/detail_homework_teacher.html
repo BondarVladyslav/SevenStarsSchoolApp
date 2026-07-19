@@ -45,7 +45,7 @@
 
         <div class="content-card">
             <div class="panel-title">Опис завдання</div>
-            <div class="prose">{{ homework.description|linebreaksbr }}</div>
+            <div class="prose">{{ homework.description|urlize|linebreaksbr }}</div>
 
             {% if homework.files.all %}
             <ul class="file-list" style="margin-top: 20px;">

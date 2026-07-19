@@ -37,7 +37,7 @@
 
         <div class="content-card">
             <div class="panel-title">Опис завдання</div>
-            <div class="prose">{{ homework.description|linebreaksbr }}</div>
+            <div class="prose">{{ homework.description|urlize|linebreaksbr }}</div>
 
             {% if homework_files %}
             <ul class="file-list" style="margin-top: 20px;">
@@ -73,7 +73,7 @@
 
             {% if submission_content %}
                 {% if submission_content.text %}
-                    <div class="prose">{{ submission_content.text|linebreaksbr }}</div>
+                    <div class="prose">{{ submission_content.text|urlize|linebreaksbr }}</div>
                 {% endif %}
 
                 {% if submission_files %}
@@ -96,7 +96,7 @@
                 {% if homework.teacher_comment %}
                 <div class="teacher-comment">
                     <span class="teacher-comment-label">Коментар учителя</span>
-                    {{ homework.teacher_comment|linebreaksbr }}
+                    {{ homework.teacher_comment|urlize|linebreaksbr }}
                 </div>
                 {% endif %}
 
