@@ -27,8 +27,19 @@
         {% endif %}
 
         {% if files %}
-        <ul class="file-list" style="margin-top: 20px;">
+        <div class="material-image-list" style="margin-top: 20px;">
             {% for file in files %}
+            {% if file.file.name|is_image %}
+            <a href="{% url 'download_material_file' file.id %}" class="material-image-item" target="_blank" rel="noopener">
+                <img src="{% url 'download_material_file' file.id %}" alt="{{ file.file.name|basename }}" loading="lazy">
+            </a>
+            {% endif %}
+            {% endfor %}
+        </div>
+
+        <ul class="file-list" style="margin-top: 12px;">
+            {% for file in files %}
+            {% if not file.file.name|is_image %}
             <li>
                 <a href="{% url 'download_material_file' file.id %}" class="file-list-link" target="_blank" rel="noopener">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -39,6 +50,7 @@
                     {{ file.file.name|basename }}
                 </a>
             </li>
+            {% endif %}
             {% endfor %}
         </ul>
         {% endif %}

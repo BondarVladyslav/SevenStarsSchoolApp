@@ -7,7 +7,7 @@ from django.http import Http404
 from django.utils.text import get_valid_filename
 
 
-def presigned_download_url(file_field, expire=300):
+def presigned_download_url(file_field, expire=300, inline=False):
     storage = file_field.storage
     name = file_field.name
 
@@ -19,16 +19,14 @@ def presigned_download_url(file_field, expire=300):
 
     filename = name.rsplit('/', 1)[-1]
     quoted_filename = quote(filename)
-    disposition = f"attachment; filename*=UTF-8''{quoted_filename}"
+    disposition_type = 'inline' if inline else 'attachment'
+    disposition = f"{disposition_type}; filename*=UTF-8''{quoted_filename}"
 
-    return storage.url(
-        name,
-        parameters={
-            'ResponseContentDisposition': disposition,
-            'ResponseContentType': 'application/octet-stream',
-        },
-        expire=expire,
-    )
+    parameters = {'ResponseContentDisposition': disposition}
+    if not inline:
+        parameters['ResponseContentType'] = 'application/octet-stream'
+
+    return storage.url(name, parameters=parameters, expire=expire)
 
 
 def presigned_upload_url(key, content_type, expire=300):

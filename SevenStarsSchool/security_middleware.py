@@ -11,8 +11,10 @@ class SecurityHeadersMiddleware:
         response = self.get_response(request)
 
         connect_src = "connect-src 'self' ws: wss:"
+        img_src = "img-src 'self' data:"
         if R2_ENDPOINT_URL:
             connect_src += f" {R2_ENDPOINT_URL}"
+            img_src += f" {R2_ENDPOINT_URL}"
 
         response.setdefault('X-Content-Type-Options', 'nosniff')
         response.setdefault('Referrer-Policy', 'same-origin')
@@ -21,7 +23,7 @@ class SecurityHeadersMiddleware:
             "script-src 'self' 'unsafe-inline'; "
             "style-src 'self' 'unsafe-inline' fonts.googleapis.com; "
             "font-src 'self' fonts.gstatic.com; "
-            "img-src 'self' data:; "
+            f"{img_src}; "
             f"{connect_src};"
         ))
 

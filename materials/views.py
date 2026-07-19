@@ -2,6 +2,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import render, get_object_or_404, redirect
 
+from courses.templatetags.file_extras import is_image
 from SevenStarsSchool.storage_utils import presigned_download_url
 from .models import Material, MaterialFile
 from users.models import Student, Teacher
@@ -56,5 +57,5 @@ def download_material_file(request, file_id):
     if not user_has_access_to_material(request.user, material_file.material):
         raise PermissionDenied
 
-    url = presigned_download_url(material_file.file)
+    url = presigned_download_url(material_file.file, inline=is_image(material_file.file.name))
     return redirect(url)

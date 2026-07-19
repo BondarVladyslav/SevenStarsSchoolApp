@@ -1068,6 +1068,28 @@
         .file-list-link:hover { background: #FDECEA; color: var(--orange); }
         .file-list-link svg { width: 16px; height: 16px; flex-shrink: 0; }
 
+        .material-image-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+        }
+
+        .material-image-item {
+            display: block;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #F8F5F7;
+        }
+
+        .material-image-item img {
+            width: 100%;
+            height: auto;
+            display: block;
+            transition: transform 0.2s;
+        }
+
+        .material-image-item:hover img { transform: scale(1.05); }
+
         .form-hint {
             font-family: 'Manrope', sans-serif;
             font-size: 12px;
@@ -1209,12 +1231,15 @@
 
         .show-usernames .entity-row-username { display: inline; }
 
-        .entity-row-actions { flex-shrink: 0; }
+        .entity-row-actions { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+        .entity-row-actions form { display: flex; }
 
     @media (max-width: 900px) {
     .entity-row { flex-direction: column; align-items: flex-start; gap: 12px; }
-    .entity-row-actions { align-self: stretch; }
-    .entity-row-actions .btn-outline { width: 100%; justify-content: center; }
+    .entity-row-actions { align-self: stretch; flex-direction: column; }
+    .entity-row-actions form { width: 100%; }
+    .entity-row-actions .btn-outline,
+    .entity-row-actions form button { width: 100%; justify-content: center; }
     }
 
         .alert-box {

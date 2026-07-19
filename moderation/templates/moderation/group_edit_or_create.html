@@ -44,7 +44,7 @@
                     <div class="entity-row-main">
                         <span class="entity-row-title" style="text-decoration: none;">{{ student.user.get_full_name }}</span>
                     </div>
-                    <div class="entity-row-actions" style="display: flex; gap: 8px;">
+                    <div class="entity-row-actions">
                         <a href="{% url 'edit_student' student.id %}" class="btn-outline">Редагувати</a>
                         <form method="post" data-confirm-delete>
                             {% csrf_token %}
