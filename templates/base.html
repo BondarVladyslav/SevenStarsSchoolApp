@@ -605,6 +605,7 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
+            min-width: 0;
             font-family: 'Manrope', sans-serif;
             font-size: 12px;
             color: #8F7B8C;
@@ -688,6 +689,7 @@
             letter-spacing: 1px;
             text-transform: uppercase;
             cursor: pointer;
+            flex-shrink: 0;
             transition: opacity 0.2s, transform 0.2s;
         }
 
@@ -1332,6 +1334,8 @@
     .message-form { padding: 14px 18px 18px; }
     .chat-messages { padding: 14px 18px; }
     .chat-panel .panel-title { padding: 18px 18px 0; }
+    .message-form-footer { flex-wrap: wrap; row-gap: 10px; }
+    .file-name-chip { flex-basis: 100%; order: 3; }
     }
 
         {% block extra_css %}{% endblock %}
