@@ -44,13 +44,46 @@
                     <div class="entity-row-main">
                         <span class="entity-row-title" style="text-decoration: none;">{{ student.user.get_full_name }}</span>
                     </div>
-                    <div class="entity-row-actions">
+                    <div class="entity-row-actions" style="display: flex; gap: 8px;">
                         <a href="{% url 'edit_student' student.id %}" class="btn-outline">Редагувати</a>
+                        <form method="post" data-confirm-delete>
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="remove_student_from_group">
+                            <input type="hidden" name="student_id" value="{{ student.id }}">
+                            <button type="submit" class="btn-danger-outline">Видалити з групи</button>
+                        </form>
                     </div>
                 </div>
                 {% endfor %}
             {% else %}
                 <div class="list-card-empty">У групі поки немає учнів.</div>
+            {% endif %}
+
+            {% if students_without_group %}
+            <form method="post" style="margin-top: 20px;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_student_to_group">
+
+                <div class="form-field">
+                    <label>Додати учня</label>
+                    <div class="message-form-footer" style="margin-top: 0; align-items: flex-start;">
+                        <div class="searchable-select" id="studentSearchSelect" style="flex: 1;">
+                            <svg class="searchable-select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <input type="text" class="searchable-select-input" placeholder="Пошук учня..." autocomplete="off">
+                            <input type="hidden" name="student_id" class="searchable-select-value">
+                            <div class="searchable-select-dropdown">
+                                {% for student in students_without_group %}
+                                <div class="searchable-select-option" data-value="{{ student.id }}">{{ student.user.get_full_name }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-outline">Додати</button>
+                    </div>
+                </div>
+            </form>
             {% endif %}
         </div>
         {% endif %}
@@ -69,20 +102,57 @@
                 </div>
 
                 <div class="form-field">
-                    <label for="{{ form.teacher.id_for_label }}">Вчитель</label>
-                    {{ form.teacher }}
+                    <label>Вчитель</label>
+                    <div class="searchable-select" id="teacherSearchSelect">
+                        <svg class="searchable-select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" class="searchable-select-input" placeholder="Пошук вчителя..." autocomplete="off" value="{% if group.teacher %}{{ group.teacher.user.get_full_name }}{% endif %}">
+                        <input type="hidden" name="teacher" class="searchable-select-value" value="{% if group.teacher %}{{ group.teacher.id }}{% endif %}">
+                        <div class="searchable-select-dropdown">
+                            {% for teacher in teachers %}
+                            <div class="searchable-select-option" data-value="{{ teacher.id }}">{{ teacher.user.get_full_name }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
                     {% if form.teacher.errors %}<div class="field-error">{{ form.teacher.errors|first }}</div>{% endif %}
                 </div>
 
                 <div class="form-field">
-                    <label for="{{ form.subject.id_for_label }}">Предмет</label>
-                    {{ form.subject }}
+                    <label>Предмет</label>
+                    <div class="searchable-select" id="subjectSearchSelect">
+                        <svg class="searchable-select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" class="searchable-select-input" placeholder="Пошук предмета..." autocomplete="off" value="{% if group.subject %}{{ group.subject.name }}{% endif %}">
+                        <input type="hidden" name="subject" class="searchable-select-value" value="{% if group.subject %}{{ group.subject.id }}{% endif %}">
+                        <div class="searchable-select-dropdown">
+                            {% for subject in subjects %}
+                            <div class="searchable-select-option" data-value="{{ subject.id }}">{{ subject.name }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
                     {% if form.subject.errors %}<div class="field-error">{{ form.subject.errors|first }}</div>{% endif %}
                 </div>
 
                 <div class="form-field">
-                    <label for="{{ form.level.id_for_label }}">Рівень</label>
-                    {{ form.level }}
+                    <label>Рівень</label>
+                    <div class="searchable-select" id="levelSearchSelect">
+                        <svg class="searchable-select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" class="searchable-select-input" placeholder="Пошук рівня..." autocomplete="off" value="{% if group.level %}{{ group.level.subject.name }} — {{ group.level.name }}{% endif %}">
+                        <input type="hidden" name="level" class="searchable-select-value" value="{% if group.level %}{{ group.level.id }}{% endif %}">
+                        <div class="searchable-select-dropdown">
+                            {% for level in levels %}
+                            <div class="searchable-select-option" data-value="{{ level.id }}" data-subject="{{ level.subject_id }}">{{ level.subject.name }} — {{ level.name }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <p class="form-hint">Список рівнів залежить від обраного предмета. Можна залишити порожнім.</p>
                     {% if form.level.errors %}<div class="field-error">{{ form.level.errors|first }}</div>{% endif %}
                 </div>
 
@@ -106,47 +176,31 @@
 {% endblock %}
 
 {% block extra_js %}
-<script id="levelsData" type="application/json">{{ levels_json|safe }}</script>
+<script src="{% static 'js/searchable_select.js' %}"></script>
 <script>
-    const levelsData = JSON.parse(document.getElementById('levelsData').textContent);
-    const subjectSelect = document.getElementById('{{ form.subject.id_for_label }}');
-    const levelSelect = document.getElementById('{{ form.level.id_for_label }}');
+    initSearchableSelect('studentSearchSelect', { emptyMessage: 'Учнів не знайдено', requireSelection: true });
+    initSearchableSelect('teacherSearchSelect', { emptyMessage: 'Вчителів не знайдено', requireSelection: true });
 
-    function populateLevels(subjectId, selectedLevelId) {
-        levelSelect.innerHTML = '';
+    const subjectValueInput = document.querySelector('#subjectSearchSelect .searchable-select-value');
+    const initialSubjectId = subjectValueInput.value;
+    let allowedSubjectId = initialSubjectId || null;
 
-        const emptyOption = document.createElement('option');
-        emptyOption.value = '';
-        emptyOption.textContent = 'Без рівня';
-        levelSelect.appendChild(emptyOption);
+    const levelSelect = initSearchableSelect('levelSearchSelect', {
+        emptyMessage: 'Рівнів не знайдено',
+        optionFilter: (opt) => !allowedSubjectId || opt.dataset.subject === String(allowedSubjectId),
+    });
 
-        if (!subjectId) {
-            levelSelect.disabled = true;
-            return;
-        }
-
-        levelSelect.disabled = false;
-
-        levelsData
-            .filter((level) => String(level.subject_id) === String(subjectId))
-            .forEach((level) => {
-                const option = document.createElement('option');
-                option.value = level.id;
-                option.textContent = level.name;
-                if (String(level.id) === String(selectedLevelId)) {
-                    option.selected = true;
-                }
-                levelSelect.appendChild(option);
-            });
-    }
-
-    if (subjectSelect && levelSelect) {
-        populateLevels(subjectSelect.value, '{{ form.level.value|default_if_none:"" }}');
-
-        subjectSelect.addEventListener('change', () => {
-            populateLevels(subjectSelect.value, '');
-        });
-    }
+    initSearchableSelect('subjectSearchSelect', {
+        emptyMessage: 'Предметів не знайдено',
+        requireSelection: true,
+        onSelect: (opt) => {
+            if (opt.dataset.value !== allowedSubjectId) {
+                levelSelect.clear();
+            }
+            allowedSubjectId = opt.dataset.value;
+            levelSelect.refresh();
+        },
+    });
 
     document.querySelectorAll('[data-confirm-delete]').forEach((form) => {
         form.addEventListener('submit', (event) => {

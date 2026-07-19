@@ -102,12 +102,6 @@ class GroupEditForm(forms.ModelForm):
 class TeacherEditForm(forms.ModelForm):
     first_name = forms.CharField(max_length=150, label='First name')
     last_name = forms.CharField(max_length=150, label='Last name')
-    groups = forms.ModelMultipleChoiceField(
-        queryset=Group.objects.all(),
-        required=False,
-        widget=forms.CheckboxSelectMultiple(attrs={'class': 'checkbox-list'}),
-        label='Групи',
-    )
  
     class Meta:
         model = Teacher
@@ -119,7 +113,6 @@ class TeacherEditForm(forms.ModelForm):
             user = self.instance.user
             self.fields['first_name'].initial = user.first_name
             self.fields['last_name'].initial = user.last_name
-            self.fields['groups'].initial = self.instance.groups.all()
  
     def save(self, commit=True):
         teacher = super().save(commit=False)
@@ -130,14 +123,6 @@ class TeacherEditForm(forms.ModelForm):
         if commit:
             user.save()
             teacher.save()
- 
-            selected_groups = self.cleaned_data['groups']
- 
-            Group.objects.filter(teacher=teacher).exclude(
-                pk__in=selected_groups.values_list('pk', flat=True)
-            ).update(teacher=None)
- 
-            selected_groups.update(teacher=teacher)
  
         return teacher
     
@@ -159,4 +144,3 @@ class LevelEditForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['subject'].label_from_instance = lambda subject: subject.name
- 

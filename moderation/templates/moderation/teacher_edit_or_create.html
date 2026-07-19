@@ -23,7 +23,7 @@
             </div>
             {% endif %}
 
-            <form method="post">
+            <form method="post" id="teacherForm">
                 {% csrf_token %}
                 {% if form.non_field_errors %}
                     <div class="field-error">{{ form.non_field_errors }}</div>
@@ -42,11 +42,34 @@
                     {% if form.last_name.errors %}<div class="field-error">{{ form.last_name.errors|first }}</div>{% endif %}
                 </div>
 
+                {% if teacher %}
                 <div class="form-field">
-                    <label>Групи</label>
-                    {{ form.groups }}
-                    {% if form.groups.errors %}<div class="field-error">{{ form.groups.errors|first }}</div>{% endif %}
+                    <label>Групи вчителя</label>
+                    <div id="teacherGroupsList"></div>
+                    <div class="list-card-empty" id="teacherGroupsEmpty" style="display: none;">У вчителя поки немає груп.</div>
+                    <div id="teacherGroupIdsInputs"></div>
+
+                    {% if available_groups_for_teacher %}
+                    <div class="message-form-footer" style="margin-top: 12px; align-items: flex-start;">
+                        <div class="searchable-select" id="groupSearchSelect" style="flex: 1;">
+                            <svg class="searchable-select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <input type="text" class="searchable-select-input" placeholder="Пошук групи..." autocomplete="off">
+                            <input type="hidden" class="searchable-select-value">
+                            <div class="searchable-select-dropdown">
+                                {% for group in available_groups_for_teacher %}
+                                <div class="searchable-select-option" data-value="{{ group.id }}" data-label="{{ group.subject.name }} — {{ group.name }}">{{ group.subject.name }} — {{ group.name }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <button type="button" class="btn-outline" id="addGroupBtn">Додати</button>
+                    </div>
+                    {% endif %}
+                    <p class="form-hint">Зміни в групах застосуються після натискання «Зберегти зміни».</p>
                 </div>
+                {% endif %}
 
                 <button type="submit" class="btn-block">
                     {% if teacher %}Зберегти зміни{% else %}Створити вчителя{% endif %}
@@ -85,7 +108,93 @@
 {% endblock %}
 
 {% block extra_js %}
+{% if teacher %}
+<script id="teacherGroupsData" type="application/json">{{ teacher_groups_json|safe }}</script>
+{% endif %}
+<script src="{% static 'js/searchable_select.js' %}"></script>
 <script>
+    const teacherGroupsListEl = document.getElementById('teacherGroupsList');
+    const teacherGroupsEmptyEl = document.getElementById('teacherGroupsEmpty');
+    const teacherGroupIdsInputsEl = document.getElementById('teacherGroupIdsInputs');
+
+    let teacherGroups = [];
+    const teacherGroupsDataEl = document.getElementById('teacherGroupsData');
+    if (teacherGroupsDataEl) {
+        try {
+            teacherGroups = JSON.parse(teacherGroupsDataEl.textContent) || [];
+        } catch (e) {
+            teacherGroups = [];
+        }
+    }
+
+    const renderTeacherGroups = () => {
+        if (!teacherGroupsListEl) return;
+
+        teacherGroupsListEl.innerHTML = '';
+        teacherGroupIdsInputsEl.innerHTML = '';
+        teacherGroupsEmptyEl.style.display = teacherGroups.length ? 'none' : 'block';
+
+        teacherGroups.forEach((group) => {
+            const row = document.createElement('div');
+            row.className = 'entity-row';
+
+            const main = document.createElement('div');
+            main.className = 'entity-row-main';
+            const title = document.createElement('span');
+            title.className = 'entity-row-title';
+            title.style.textDecoration = 'none';
+            title.textContent = group.label;
+            main.appendChild(title);
+
+            const actions = document.createElement('div');
+            actions.className = 'entity-row-actions';
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn-danger-outline';
+            removeBtn.textContent = 'Прибрати';
+            removeBtn.addEventListener('click', () => {
+                teacherGroups = teacherGroups.filter((g) => g.id !== group.id);
+                renderTeacherGroups();
+                if (groupSelect) groupSelect.refresh();
+            });
+            actions.appendChild(removeBtn);
+
+            row.appendChild(main);
+            row.appendChild(actions);
+            teacherGroupsListEl.appendChild(row);
+
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'group_ids';
+            hiddenInput.value = group.id;
+            teacherGroupIdsInputsEl.appendChild(hiddenInput);
+        });
+    };
+
+    const groupSelect = document.getElementById('groupSearchSelect') ? initSearchableSelect('groupSearchSelect', {
+        emptyMessage: 'Груп не знайдено',
+        optionFilter: (opt) => !teacherGroups.some((g) => String(g.id) === opt.dataset.value),
+    }) : null;
+
+    const addGroupBtn = document.getElementById('addGroupBtn');
+    if (addGroupBtn && groupSelect) {
+        addGroupBtn.addEventListener('click', () => {
+            const valueInput = document.querySelector('#groupSearchSelect .searchable-select-value');
+            const value = valueInput.value;
+            if (!value) return;
+
+            const optionEl = document.querySelector(`#groupSearchSelect .searchable-select-option[data-value="${value}"]`);
+            if (!optionEl) return;
+
+            teacherGroups.push({ id: Number(value), label: optionEl.dataset.label });
+            renderTeacherGroups();
+            groupSelect.clear();
+            groupSelect.refresh();
+        });
+    }
+
+    renderTeacherGroups();
+
     document.querySelectorAll('[data-confirm-delete]').forEach((form) => {
         form.addEventListener('submit', (event) => {
             if (!window.confirm('Ви впевнені? Цю дію не можна скасувати.')) {

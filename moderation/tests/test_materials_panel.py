@@ -23,14 +23,15 @@ class SuperuserTestCase(TestCase):
 
 
 class GroupCreateOrEditGetPageTests(SuperuserTestCase):
-    def test_get_create_page_renders_with_levels_json(self):
+    def test_get_create_page_renders_with_levels(self):
         subject = Subject.objects.create(name='Математика')
-        Level.objects.create(subject=subject, name='Beginner')
+        level = Level.objects.create(subject=subject, name='Beginner')
 
         response = self.client.get(reverse('create_group'))
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn('Beginner', response.context['levels_json'])
+        self.assertIn(level, response.context['levels'])
+        self.assertContains(response, 'Beginner')
 
     def test_get_edit_page_for_existing_group(self):
         subject = Subject.objects.create(name='Математика')

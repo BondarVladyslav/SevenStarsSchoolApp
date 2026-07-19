@@ -255,6 +255,66 @@ class TeacherEditOrCreateViewTests(TestCase):
         self.assertRedirects(response, reverse('moderation_dashboard'))
         self.assertFalse(Teacher.objects.filter(id=teacher.id).exists())
 
+    def test_add_and_remove_group_from_teacher(self):
+        subject = Subject.objects.create(name='Математика')
+        group = Group.objects.create(name='Group A', subject=subject)
+        user = User.objects.create_user(username='teacher2', password='pass12345')
+        teacher = Teacher.objects.create(user=user)
+
+        self.client.post(reverse('edit_teacher', args=[teacher.id]), {
+            'action': 'change_teacher_info',
+            'first_name': 'Петро',
+            'last_name': 'Іванов',
+            'group_ids': [group.id],
+        })
+        group.refresh_from_db()
+        self.assertEqual(group.teacher, teacher)
+
+        self.client.post(reverse('edit_teacher', args=[teacher.id]), {
+            'action': 'change_teacher_info',
+            'first_name': 'Петро',
+            'last_name': 'Іванов',
+            'group_ids': [],
+        })
+        group.refresh_from_db()
+        self.assertIsNone(group.teacher)
+
+    def test_cannot_reassign_group_that_already_has_teacher(self):
+        subject = Subject.objects.create(name='Математика')
+        other_user = User.objects.create_user(username='teacher3', password='pass12345')
+        other_teacher = Teacher.objects.create(user=other_user)
+        group = Group.objects.create(name='Group B', subject=subject, teacher=other_teacher)
+
+        user = User.objects.create_user(username='teacher4', password='pass12345')
+        teacher = Teacher.objects.create(user=user)
+
+        self.client.post(reverse('edit_teacher', args=[teacher.id]), {
+            'action': 'change_teacher_info',
+            'first_name': 'Іван',
+            'last_name': 'Петренко',
+            'group_ids': [group.id],
+        })
+
+        group.refresh_from_db()
+        self.assertEqual(group.teacher, other_teacher)
+
+    def test_saving_name_without_group_ids_does_not_wipe_existing_groups(self):
+        subject = Subject.objects.create(name='Математика')
+        user = User.objects.create_user(username='teacher5', password='pass12345')
+        teacher = Teacher.objects.create(user=user)
+        group = Group.objects.create(name='Group C', subject=subject, teacher=teacher)
+
+        response = self.client.post(reverse('edit_teacher', args=[teacher.id]), {
+            'action': 'change_teacher_info',
+            'first_name': 'Оновлене',
+            'last_name': 'Ім’я',
+            'group_ids': [group.id],
+        })
+
+        self.assertRedirects(response, reverse('moderation_dashboard'))
+        group.refresh_from_db()
+        self.assertEqual(group.teacher, teacher)
+
 
 class SubjectAndLevelViewTests(TestCase):
     def setUp(self):

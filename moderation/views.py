@@ -17,7 +17,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 import random
 import string
-from django.db.models import Prefetch 
+from django.db.models import Prefetch, Q 
 from courses.models import Group
 from users.models import Student, Teacher
 from SevenStarsSchool.storage_utils import build_presigned_uploads, validate_uploaded_keys
@@ -28,9 +28,9 @@ from SevenStarsSchool.storage_utils import build_presigned_uploads, validate_upl
 def moderation_dashboard(request):
     groups = Group.objects.select_related('teacher__user').prefetch_related(
         Prefetch('students', queryset=Student.objects.select_related('user'))
-    )
-    students = Student.objects.select_related('user').prefetch_related('groups')
-    teachers = Teacher.objects.select_related('user').prefetch_related('groups')
+    ).order_by('id')
+    students = Student.objects.select_related('user').prefetch_related('groups').order_by('id')
+    teachers = Teacher.objects.select_related('user').prefetch_related('groups').order_by('id')
  
     context = {
         'groups': groups,
@@ -57,14 +57,36 @@ def group_create_or_edit(request, group_id=None):
             if form.is_valid():
                 group = form.save()
                 return redirect('moderation_dashboard')
+        elif action == 'add_student_to_group':
+            if group:
+                student_id = request.POST.get('student_id')
+                if student_id:
+                    student = get_object_or_404(Student, id=student_id)
+                    student.groups.add(group)
+                return redirect('edit_group', group_id=group.id)
+        elif action == 'remove_student_from_group':
+            if group:
+                student_id = request.POST.get('student_id')
+                if student_id:
+                    student = get_object_or_404(Student, id=student_id)
+                    student.groups.remove(group)
+                return redirect('edit_group', group_id=group.id)
  
-    levels_data = list(Level.objects.select_related('subject').values('id', 'subject_id', 'name'))
+    students_without_group = (
+        Student.objects.exclude(groups=group).select_related('user').distinct() if group else Student.objects.none()
+    )
+    teachers = Teacher.objects.select_related('user').all()
+    subjects = Subject.objects.all()
+    levels = Level.objects.select_related('subject').all()
  
     context = {
         'form': form,
         'group': group,
         'students': students,
-        'levels_json': json.dumps(levels_data).replace('</', '<\\/'),
+        'students_without_group': students_without_group,
+        'teachers': teachers,
+        'subjects': subjects,
+        'levels': levels,
     }
     return render(request, 'moderation/group_edit_or_create.html', context)
 
@@ -307,6 +329,19 @@ def teacher_edit_or_create(request, teacher_id=None):
                     return redirect('edit_teacher', teacher_id=teacher.id)
 
                 teacher = form.save()
+
+                desired_group_ids = {
+                    int(group_id) for group_id in request.POST.getlist('group_ids') if group_id.isdigit()
+                }
+                current_group_ids = set(teacher.groups.values_list('id', flat=True))
+
+                Group.objects.filter(
+                    id__in=current_group_ids - desired_group_ids, teacher=teacher,
+                ).update(teacher=None)
+                Group.objects.filter(
+                    id__in=desired_group_ids - current_group_ids, teacher__isnull=True,
+                ).update(teacher=teacher)
+
                 return redirect('moderation_dashboard')
 
     if (
@@ -317,10 +352,24 @@ def teacher_edit_or_create(request, teacher_id=None):
         generated_password = request.session.pop('generated_password_for_teacher')
         request.session.pop('generated_password_teacher_id', None)
 
+    teacher_groups_json = '[]'
+    available_groups_for_teacher = Group.objects.none()
+
+    if teacher:
+        teacher_groups_json = json.dumps([
+            {'id': group.id, 'label': f'{group.subject.name} — {group.name}'}
+            for group in teacher.groups.select_related('subject').all()
+        ]).replace('</', '<\\/')
+        available_groups_for_teacher = Group.objects.filter(
+            Q(teacher__isnull=True) | Q(teacher=teacher)
+        ).select_related('subject')
+
     context = {
         'teacher': teacher,
         'form': form,
         'generated_password': generated_password,
+        'teacher_groups_json': teacher_groups_json,
+        'available_groups_for_teacher': available_groups_for_teacher,
     }
     return render(request, 'moderation/teacher_edit_or_create.html', context)
 
@@ -551,6 +600,12 @@ def level_edit_or_create(request, level_id=None):
         'level': level,
         'is_edit': level is not None,
         'subject_id': subject_id,
+        'subjects': Subject.objects.all(),
+        'selected_subject': (
+            Subject.objects.filter(
+                id=request.POST.get('subject') or (level.subject_id if level else subject_id)
+            ).first()
+        ),
     }
     return render(request, 'moderation/level_edit_or_create.html', context)
 

@@ -61,50 +61,31 @@ class ParentEditFormTests(TestCase):
 
 
 class TeacherEditFormTests(TestCase):
-    def test_save_updates_names_and_group_assignments(self):
+    def test_save_updates_names(self):
         user = User.objects.create_user(username='teacher1', password='pass12345')
         teacher = Teacher.objects.create(user=user)
-        subject = Subject.objects.create(name='Математика')
-        group1 = Group.objects.create(name='Group 1', subject=subject)
-        group2 = Group.objects.create(name='Group 2', subject=subject)
 
         form = TeacherEditForm(
-            data={'first_name': 'Петро', 'last_name': 'Іванов', 'groups': [group1.id, group2.id]},
+            data={'first_name': 'Петро', 'last_name': 'Іванов'},
             instance=teacher,
         )
         self.assertTrue(form.is_valid())
         form.save()
 
-        group1.refresh_from_db()
-        group2.refresh_from_db()
-        self.assertEqual(group1.teacher, teacher)
-        self.assertEqual(group2.teacher, teacher)
+        user.refresh_from_db()
+        self.assertEqual(user.first_name, 'Петро')
+        self.assertEqual(user.last_name, 'Іванов')
 
-    def test_save_removes_groups_not_selected_anymore(self):
-        user = User.objects.create_user(username='teacher2', password='pass12345')
-        teacher = Teacher.objects.create(user=user)
-        subject = Subject.objects.create(name='Математика')
-        group = Group.objects.create(name='Group 1', subject=subject, teacher=teacher)
-
-        form = TeacherEditForm(
-            data={'first_name': 'Петро', 'last_name': 'Іванов', 'groups': []},
-            instance=teacher,
+    def test_prefills_first_and_last_name_from_user(self):
+        user = User.objects.create_user(
+            username='teacher3', password='pass12345', first_name='Іван', last_name='Петров',
         )
-        self.assertTrue(form.is_valid())
-        form.save()
-
-        group.refresh_from_db()
-        self.assertIsNone(group.teacher)
-
-    def test_groups_field_prefilled_from_instance(self):
-        user = User.objects.create_user(username='teacher3', password='pass12345')
         teacher = Teacher.objects.create(user=user)
-        subject = Subject.objects.create(name='Математика')
-        group = Group.objects.create(name='Group 1', subject=subject, teacher=teacher)
 
         form = TeacherEditForm(instance=teacher)
 
-        self.assertIn(group, form.fields['groups'].initial)
+        self.assertEqual(form.fields['first_name'].initial, 'Іван')
+        self.assertEqual(form.fields['last_name'].initial, 'Петров')
 
 
 class GroupEditFormTests(TestCase):
