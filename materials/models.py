@@ -16,5 +16,5 @@ class Material(models.Model):
 
 class MaterialFile(models.Model):
     material = models.ForeignKey(Material, on_delete=models.CASCADE, related_name='files')
-    file = models.FileField(upload_to='materials/')
+    file = models.FileField(upload_to='materials/', max_length=255)
     uploaded_at = models.DateTimeField(auto_now_add=True)

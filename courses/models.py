@@ -38,7 +38,7 @@ class Homework(models.Model):
 
 class HomeworkFile(models.Model):
     homework = models.ForeignKey(Homework, on_delete=models.CASCADE, related_name='files')
-    file = models.FileField(upload_to='homework_files/')
+    file = models.FileField(upload_to='homework_files/', max_length=255)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
 
@@ -67,5 +67,5 @@ class HomeworkSubmission(models.Model):
 
 class SubmissionFile(models.Model):
     submission = models.ForeignKey(HomeworkSubmission, on_delete=models.CASCADE, related_name='files')
-    file = models.FileField(upload_to='submission_files/')
+    file = models.FileField(upload_to='submission_files/', max_length=255)
     uploaded_at = models.DateTimeField(auto_now_add=True)
