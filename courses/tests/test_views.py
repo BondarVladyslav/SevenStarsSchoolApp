@@ -2,6 +2,7 @@ import shutil
 import tempfile
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
@@ -247,6 +248,23 @@ class DetailHomeworkViewTests(TestCase):
         self.assertRedirects(response, reverse('detail_homework', args=[self.homework.id]))
         submission = HomeworkSubmission.objects.get(homework=self.homework, student=self.student)
         self.assertEqual(submission.files.count(), 1)
+
+    def test_oversized_uploaded_file_is_rejected_and_deleted(self):
+        from django.core.files.storage import default_storage
+
+        self.client.force_login(self.student_user)
+        key = 'submission_files/big.bin'
+        oversized_content = b'x' * (settings.MAX_UPLOAD_SIZE_STUDENT + 1)
+        default_storage.save(key, SimpleUploadedFile('big.bin', oversized_content))
+
+        response = self.client.post(
+            reverse('detail_homework', args=[self.homework.id]),
+            {'action': 'send_homework', 'text': 'Text', 'uploaded_keys': [key]},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(HomeworkSubmission.objects.filter(homework=self.homework, student=self.student).exists())
+        self.assertFalse(default_storage.exists(key))
 
     def test_student_can_delete_pending_submission(self):
         submission = HomeworkSubmission.objects.create(
@@ -708,7 +726,7 @@ class HomeworkUploadUrlViewTests(TestCase):
 
         response = self.client.post(
             reverse('homework_upload_url', args=[self.group.id]),
-            data='{"filenames": ["a.txt"]}',
+            data='{"files": [{"name": "a.txt", "size": 100}]}',
             content_type='application/json',
         )
 
@@ -719,7 +737,7 @@ class HomeworkUploadUrlViewTests(TestCase):
 
         response = self.client.post(
             reverse('homework_upload_url', args=[self.group.id]),
-            data='{"filenames": ["a.txt"]}',
+            data='{"files": [{"name": "a.txt", "size": 100}]}',
             content_type='application/json',
         )
 
@@ -731,7 +749,7 @@ class HomeworkUploadUrlViewTests(TestCase):
 
         response = self.client.post(
             reverse('homework_upload_url', args=[self.group.id]),
-            data='{"filenames": ["a.txt"]}',
+            data='{"files": [{"name": "a.txt", "size": 100}]}',
             content_type='application/json',
         )
 
@@ -744,12 +762,26 @@ class HomeworkUploadUrlViewTests(TestCase):
 
     def test_too_many_filenames_is_bad_request(self):
         self.client.force_login(self.teacher_user)
+        files_json = ', '.join(f'{{"name": "{c}.txt", "size": 100}}' for c in 'abcdefgh')
         response = self.client.post(
             reverse('homework_upload_url', args=[self.group.id]),
-            data='{"filenames": ["a.txt", "b.txt", "c.txt", "d.txt", "e.txt", "f.txt", "g.txt", "h.txt"]}',
+            data='{"files": [' + files_json + ']}',
             content_type='application/json',
         )
         self.assertEqual(response.status_code, 400)
+
+    def test_file_over_teacher_limit_is_rejected(self):
+        self.client.force_login(self.teacher_user)
+        oversized = settings.MAX_UPLOAD_SIZE_TEACHER + 1
+
+        response = self.client.post(
+            reverse('homework_upload_url', args=[self.group.id]),
+            data='{"files": [{"name": "big.mp4", "size": %d}]}' % oversized,
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('big.mp4', response.content.decode())
 
 
 class SubmissionUploadUrlViewTests(TestCase):
@@ -768,7 +800,7 @@ class SubmissionUploadUrlViewTests(TestCase):
 
         response = self.client.post(
             reverse('submission_upload_url', args=[self.homework.id]),
-            data='{"filenames": ["answer.txt"]}',
+            data='{"files": [{"name": "answer.txt", "size": 100}]}',
             content_type='application/json',
         )
 
@@ -780,7 +812,7 @@ class SubmissionUploadUrlViewTests(TestCase):
 
         response = self.client.post(
             reverse('submission_upload_url', args=[self.homework.id]),
-            data='{"filenames": ["answer.txt"]}',
+            data='{"files": [{"name": "answer.txt", "size": 100}]}',
             content_type='application/json',
         )
 
@@ -791,8 +823,21 @@ class SubmissionUploadUrlViewTests(TestCase):
 
         response = self.client.post(
             reverse('submission_upload_url', args=[self.homework.id]),
-            data='{"filenames": ["answer.txt"]}',
+            data='{"files": [{"name": "answer.txt", "size": 100}]}',
             content_type='application/json',
         )
 
         self.assertEqual(response.status_code, 403)
+
+    def test_file_over_student_limit_is_rejected(self):
+        self.client.force_login(self.student_user)
+        oversized = settings.MAX_UPLOAD_SIZE_STUDENT + 1
+
+        response = self.client.post(
+            reverse('submission_upload_url', args=[self.homework.id]),
+            data='{"files": [{"name": "big.zip", "size": %d}]}' % oversized,
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('big.zip', response.content.decode())

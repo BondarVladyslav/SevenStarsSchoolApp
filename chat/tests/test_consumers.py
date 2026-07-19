@@ -1,11 +1,15 @@
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.utils import timezone
 from asgiref.sync import sync_to_async
 from channels.testing import WebsocketCommunicator
 from django.test import TransactionTestCase, override_settings
 
 from chat.consumers import ChatConsumer
 from chat.models import Conversation, Message
+from courses.models import Group, Homework, Subject
 from users.models import Student, Teacher
 
 User = get_user_model()
@@ -147,6 +151,46 @@ class ChatConsumerTests(TransactionTestCase):
 
         await communicator.disconnect()
 
+    async def test_homework_from_conversation_group_is_attached(self):
+        homework = await self._acreate_homework(self.teacher, self.student)
+
+        communicator = self._make_communicator(self.student_user)
+        connected, _ = await self._connect(communicator)
+        self.assertTrue(connected)
+
+        await communicator.send_json_to({'text': 'Ось моя робота', 'homework_id': homework.id})
+        response = await communicator.receive_json_from(timeout=10)
+
+        self.assertEqual(response['homework_id'], homework.id)
+        self.assertEqual(response['homework_title'], homework.title)
+
+        message = await self._aget_last_message()
+        self.assertEqual(message.homework_id, homework.id)
+
+        await communicator.disconnect()
+
+    async def test_homework_from_unrelated_group_is_ignored(self):
+        other_teacher_user = await self._acreate_user('teacher2')
+        other_teacher = await self._acreate_teacher(other_teacher_user)
+        other_student_user = await self._acreate_user('student2')
+        other_student = await self._acreate_student(other_student_user)
+        foreign_homework = await self._acreate_homework(other_teacher, other_student)
+
+        communicator = self._make_communicator(self.student_user)
+        connected, _ = await self._connect(communicator)
+        self.assertTrue(connected)
+
+        await communicator.send_json_to({'text': 'Ось моя робота', 'homework_id': foreign_homework.id})
+        response = await communicator.receive_json_from(timeout=10)
+
+        self.assertIsNone(response['homework_id'])
+        self.assertIsNone(response['homework_title'])
+
+        message = await self._aget_last_message()
+        self.assertIsNone(message.homework_id)
+
+        await communicator.disconnect()
+
     async def test_ping_gets_pong_and_does_not_create_message(self):
         communicator = self._make_communicator(self.student_user)
         connected, _ = await self._connect(communicator)
@@ -172,3 +216,20 @@ class ChatConsumerTests(TransactionTestCase):
     @sync_to_async
     def _aget_last_message(self):
         return Message.objects.select_related().latest('id')
+
+    @sync_to_async
+    def _acreate_teacher(self, user):
+        return Teacher.objects.create(user=user)
+
+    @sync_to_async
+    def _acreate_student(self, user):
+        return Student.objects.create(user=user)
+
+    @sync_to_async
+    def _acreate_homework(self, teacher, student):
+        subject = Subject.objects.create(name='Математика')
+        group = Group.objects.create(name='Group A', subject=subject, teacher=teacher)
+        group.students.add(student)
+        return Homework.objects.create(
+            group=group, title='ДЗ 1', description='Опис', deadline=timezone.now() + timedelta(days=3),
+        )   

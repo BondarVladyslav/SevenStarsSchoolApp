@@ -48,12 +48,22 @@ def presigned_upload_url(key, content_type, expire=300):
     )
 
 
-def build_presigned_uploads(filenames, prefix, max_files=7, expire=300):
-    if not filenames or len(filenames) > max_files:
-        raise ValueError('invalid filenames count')
+def build_presigned_uploads(files, prefix, max_files=7, expire=300, max_size=None):
+    if not files or len(files) > max_files:
+        raise ValueError('Некоректна кількість файлів')
 
     uploads = []
-    for filename in filenames:
+    for file_info in files:
+        filename = file_info.get('name')
+        size = file_info.get('size')
+
+        if not filename or not isinstance(size, int) or size < 0:
+            raise ValueError('Некоректні дані файлу')
+
+        if max_size is not None and size > max_size:
+            max_mb = max_size // (1024 * 1024)
+            raise ValueError(f'Файл "{filename}" перевищує ліміт {max_mb} МБ')
+
         safe_name = get_valid_filename(filename)
         key = f'{prefix}/{uuid.uuid4()}_{safe_name}'
         content_type = mimetypes.guess_type(safe_name)[0] or 'application/octet-stream'
@@ -66,10 +76,16 @@ def build_presigned_uploads(filenames, prefix, max_files=7, expire=300):
     return uploads
 
 
-def validate_uploaded_keys(keys, prefix, max_files=7):
+def validate_uploaded_keys(keys, prefix, max_files=7, max_size=None):
     if len(keys) > max_files:
         raise ValueError('too many files')
 
     for key in keys:
         if not key.startswith(f'{prefix}/') or not default_storage.exists(key):
             raise ValueError(f'invalid key: {key}')
+
+        if max_size is not None and default_storage.size(key) > max_size:
+            # The client can lie about size when requesting the upload URL,
+            # but not about the actual bytes that landed in storage.
+            default_storage.delete(key)
+            raise ValueError(f'file too large: {key}')

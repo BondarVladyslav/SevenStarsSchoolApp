@@ -1,5 +1,6 @@
 from datetime import datetime
 import json
+from django.conf import settings
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -119,12 +120,14 @@ def request_submission_upload_urls(request, pk):
     except (json.JSONDecodeError, TypeError):
         return HttpResponseBadRequest('Некоректний запит')
 
-    filenames = payload.get('filenames', [])
+    files = payload.get('files', [])
 
     try:
-        uploads = build_presigned_uploads(filenames, prefix='submission_files')
-    except ValueError:
-        return HttpResponseBadRequest('Некоректна кількість файлів')
+        uploads = build_presigned_uploads(
+            files, prefix='submission_files', max_size=settings.MAX_UPLOAD_SIZE_STUDENT,
+        )
+    except ValueError as e:
+        return HttpResponseBadRequest(str(e))
     except RuntimeError:
         return HttpResponseBadRequest('Пряме завантаження недоступне')
 
@@ -156,7 +159,9 @@ def detail_homework_view(request, pk):
                 uploaded_keys = request.POST.getlist('uploaded_keys')
 
                 try:
-                    validate_uploaded_keys(uploaded_keys, prefix='submission_files')
+                    validate_uploaded_keys(
+                        uploaded_keys, prefix='submission_files', max_size=settings.MAX_UPLOAD_SIZE_STUDENT,
+                    )
                 except ValueError:
                     return HttpResponseBadRequest('Некоректні файли')
 
@@ -231,12 +236,14 @@ def request_homework_upload_urls(request, group_id):
     except (json.JSONDecodeError, TypeError):
         return HttpResponseBadRequest('Некоректний запит')
 
-    filenames = payload.get('filenames', [])
+    files = payload.get('files', [])
 
     try:
-        uploads = build_presigned_uploads(filenames, prefix='homework_files')
-    except ValueError:
-        return HttpResponseBadRequest('Некоректна кількість файлів')
+        uploads = build_presigned_uploads(
+            files, prefix='homework_files', max_size=settings.MAX_UPLOAD_SIZE_TEACHER,
+        )
+    except ValueError as e:
+        return HttpResponseBadRequest(str(e))
     except RuntimeError:
         return HttpResponseBadRequest('Пряме завантаження недоступне')
 
@@ -268,7 +275,9 @@ def homework_create_or_edit(request, group_id, homework_id=None):
             uploaded_keys = request.POST.getlist('uploaded_keys')
  
             try:
-                validate_uploaded_keys(uploaded_keys, prefix='homework_files')
+                validate_uploaded_keys(
+                    uploaded_keys, prefix='homework_files', max_size=settings.MAX_UPLOAD_SIZE_TEACHER,
+                )
             except ValueError:
                 return HttpResponseBadRequest('Некоректні файли')
  

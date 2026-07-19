@@ -385,7 +385,7 @@ class MaterialUploadUrlViewTests(SuperuserTestCase):
 
         response = self.client.post(
             reverse('material_upload_url'),
-            data='{"filenames": ["a.txt"]}',
+            data='{"files": [{"name": "a.txt", "size": 100}]}',
             content_type='application/json',
         )
 
@@ -407,7 +407,7 @@ class MaterialUploadUrlViewTests(SuperuserTestCase):
     def test_empty_filenames_is_bad_request(self):
         response = self.client.post(
             reverse('material_upload_url'),
-            data='{"filenames": []}',
+            data='{"files": []}',
             content_type='application/json',
         )
         self.assertEqual(response.status_code, 400)
@@ -415,7 +415,7 @@ class MaterialUploadUrlViewTests(SuperuserTestCase):
     def test_too_many_filenames_is_bad_request(self):
         response = self.client.post(
             reverse('material_upload_url'),
-            data='{"filenames": ["a.txt", "b.txt", "c.txt", "d.txt", "e.txt", "f.txt", "g.txt", "h.txt"]}',
+            data='{"files": [{"name": "a.txt", "size": 100}, {"name": "b.txt", "size": 100}, {"name": "c.txt", "size": 100}, {"name": "d.txt", "size": 100}, {"name": "e.txt", "size": 100}, {"name": "f.txt", "size": 100}, {"name": "g.txt", "size": 100}, {"name": "h.txt", "size": 100}]}',
             content_type='application/json',
         )
         self.assertEqual(response.status_code, 400)
@@ -423,7 +423,7 @@ class MaterialUploadUrlViewTests(SuperuserTestCase):
     def test_non_s3_storage_is_bad_request(self):
         response = self.client.post(
             reverse('material_upload_url'),
-            data='{"filenames": ["a.txt"]}',
+            data='{"files": [{"name": "a.txt", "size": 100}]}',
             content_type='application/json',
         )
         self.assertEqual(response.status_code, 400)

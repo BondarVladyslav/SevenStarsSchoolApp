@@ -28,7 +28,7 @@
 <script src="{% static 'js/form_utils.js' %}"></script>
 <script src="{% static 'chat/js/message_form.js' %}"></script>
 <script>
-    initFileChip('{{ form_id }}_fileInput', '{{ file_chip_id }}');
+    initFileChip('{{ form_id }}_fileInput', '{{ file_chip_id }}', {% if max_file_size %}{{ max_file_size }}{% else %}Infinity{% endif %});
     autoGrowTextarea('{{ text_field_id }}', {{ max_height }});
 
     {% if conversation_id %}

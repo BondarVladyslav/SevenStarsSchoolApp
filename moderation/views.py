@@ -453,12 +453,12 @@ def request_material_upload_urls(request):
     except (json.JSONDecodeError, TypeError):
         return HttpResponseBadRequest('Некоректний запит')
 
-    filenames = payload.get('filenames', [])
+    files = payload.get('files', [])
 
     try:
-        uploads = build_presigned_uploads(filenames, prefix='materials')
-    except ValueError:
-        return HttpResponseBadRequest('Некоректна кількість файлів')
+        uploads = build_presigned_uploads(files, prefix='materials')
+    except ValueError as e:
+        return HttpResponseBadRequest(str(e))
     except RuntimeError:
         return HttpResponseBadRequest('Пряме завантаження недоступне')
 

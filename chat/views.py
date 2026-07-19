@@ -1,5 +1,6 @@
 import json
 
+from django.conf import settings
 from django.http import Http404, HttpResponseBadRequest, JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect
@@ -45,12 +46,19 @@ def request_chat_upload_url(request, conversation_id):
     except (json.JSONDecodeError, TypeError):
         return HttpResponseBadRequest('Некоректний запит')
 
-    filenames = payload.get('filenames', [])
+    files = payload.get('files', [])
+
+    if user.is_superuser:
+        max_size = None
+    elif conversation.teacher.user_id == user.id:
+        max_size = settings.MAX_UPLOAD_SIZE_TEACHER
+    else:
+        max_size = settings.MAX_UPLOAD_SIZE_STUDENT
 
     try:
-        uploads = build_presigned_uploads(filenames, prefix='chat_files', max_files=1)
-    except ValueError:
-        return HttpResponseBadRequest('Некоректна кількість файлів')
+        uploads = build_presigned_uploads(files, prefix='chat_files', max_files=1, max_size=max_size)
+    except ValueError as e:
+        return HttpResponseBadRequest(str(e))
     except RuntimeError:
         return HttpResponseBadRequest('Пряме завантаження недоступне')
 

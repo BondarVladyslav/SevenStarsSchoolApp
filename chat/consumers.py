@@ -1,4 +1,5 @@
 import json
+from django.conf import settings
 from django.utils import timezone
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
@@ -58,48 +59,55 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 }))
                 return
  
-        message = await self.create_message(text, homework_id, file_key)
-        homework_title = await self.get_homework_title(homework_id)
+        homework = await self.get_conversation_homework(homework_id) if homework_id else None
+
+        message = await self.create_message(text, homework, file_key)
 
         await self.channel_layer.group_send(
             self.room_group_name,
             {
-                'type': 'chat_message', 
+                'type': 'chat_message',
                 'message_id': message.id,
                 'sender_id': message.sender_id,
                 'sender_name': message.sender.get_full_name() or message.sender.username,
                 'text': message.text,
                 'has_file': bool(file_key),
-                'homework_id': homework_id,
-                'homework_title': homework_title,
+                'homework_id': homework.id if homework else None,
+                'homework_title': homework.title if homework else None,
             }
         )
 
     async def chat_message(self, event):
         await self.send(text_data=json.dumps(event))
     @database_sync_to_async
-    def user_can_access_conversation(self, user):   
+    def user_can_access_conversation(self, user):
         try:
             conversation = Conversation.objects.select_related(
                 'teacher__user', 'student__user'
             ).get(pk=self.conversation_id)
         except Conversation.DoesNotExist:
             return False
- 
-        return user.id in (conversation.teacher.user_id, conversation.student.user_id)
- 
+
+        if user.id not in (conversation.teacher.user_id, conversation.student.user_id):
+            return False
+
+        self.max_upload_size = (
+            settings.MAX_UPLOAD_SIZE_TEACHER if user.id == conversation.teacher.user_id
+            else settings.MAX_UPLOAD_SIZE_STUDENT
+        )
+        return True
+
     @sync_to_async
     def validate_file_key(self, file_key):
         try:
-            validate_uploaded_keys([file_key], prefix='chat_files', max_files=1)
+            validate_uploaded_keys([file_key], prefix='chat_files', max_files=1, max_size=self.max_upload_size)
         except ValueError:
             return False
         return True
 
     @database_sync_to_async
-    def create_message(self, text, homework_id, file_key):
+    def create_message(self, text, homework, file_key):
         conversation = Conversation.objects.get(pk=self.conversation_id)
-        homework = Homework.objects.filter(pk=homework_id).first() if homework_id else None
         return Message.objects.create(
             conversation=conversation,
             sender=self.scope['user'],
@@ -107,13 +115,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
             file=file_key,
             homework=homework,
         )
- 
+
     @database_sync_to_async
-    def get_homework_title(self, homework_id):
-        if not homework_id:
-            return None
-        homework = Homework.objects.filter(pk=homework_id).first()
-        return homework.title if homework else None
+    def get_conversation_homework(self, homework_id):
+        conversation = Conversation.objects.select_related('teacher', 'student').get(pk=self.conversation_id)
+        return Homework.objects.filter(
+            pk=homework_id,
+            group__teacher_id=conversation.teacher_id,
+            group__students=conversation.student_id,
+        ).first()
     
     
     @sync_to_async

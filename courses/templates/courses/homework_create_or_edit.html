@@ -157,7 +157,7 @@
 <script src="{% static 'js/form_utils.js' %}"></script>
 <script src="{% static 'js/searchable_select.js' %}"></script>
 <script>
-    initFileList('newHomeworkFiles', 'newHomeworkFileList', 7, 'homeworkSubmitBtn', 'newHomeworkFileHint');
+    initFileList('newHomeworkFiles', 'newHomeworkFileList', 7, 'homeworkSubmitBtn', 'newHomeworkFileHint', 100 * 1024 * 1024);
     initSearchableSelect('lessonSearchSelect', {
         emptyMessage: 'Занять не знайдено',
         onSelect: (opt) => {
@@ -200,10 +200,10 @@
                         'Content-Type': 'application/json',
                         'X-CSRFToken': csrfToken,
                     },
-                    body: JSON.stringify({ filenames: files.map((f) => f.name) }),
+                    body: JSON.stringify({ files: files.map((f) => ({ name: f.name, size: f.size })) }),
                 });
 
-                if (!urlResponse.ok) throw new Error('upload-url request failed');
+                if (!urlResponse.ok) throw new Error(await urlResponse.text());
                 const { uploads } = await urlResponse.json();
 
                 for (let i = 0; i < files.length; i++) {
@@ -227,9 +227,11 @@
                 body: formData,
             });
 
+            if (!saveResponse.ok) throw new Error(await saveResponse.text());
+
             window.location.href = saveResponse.url;
         } catch (err) {
-            alert('Не вдалося завантажити файли. Спробуйте ще раз.');
+            alert(err.message || 'Не вдалося завантажити файли. Спробуйте ще раз.');
             homeworkSubmitBtn.disabled = false;
             homeworkSubmitBtn.textContent = originalHomeworkSubmitLabel;
         }

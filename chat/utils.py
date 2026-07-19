@@ -1,3 +1,5 @@
+from django.conf import settings
+
 from SevenStarsSchool.storage_utils import validate_uploaded_keys
 from .forms import SendMessageForm
 from .models import Message
@@ -9,8 +11,15 @@ def handle_chat_message(request, conversation, homework=None):
         uploaded_key = request.POST.get('uploaded_key', '')
 
         if uploaded_key:
+            if request.user.is_superuser:
+                max_size = None
+            elif request.user.id == conversation.teacher.user_id:
+                max_size = settings.MAX_UPLOAD_SIZE_TEACHER
+            else:
+                max_size = settings.MAX_UPLOAD_SIZE_STUDENT
+
             try:
-                validate_uploaded_keys([uploaded_key], prefix='chat_files', max_files=1)
+                validate_uploaded_keys([uploaded_key], prefix='chat_files', max_files=1, max_size=max_size)
             except ValueError:
                 return form, False
 

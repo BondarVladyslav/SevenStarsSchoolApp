@@ -93,7 +93,7 @@ class ChatUploadUrlViewTests(TestCase):
 
         response = self.client.post(
             reverse('chat_upload_url', args=[self.conversation.id]),
-            data='{"filenames": ["a.txt"]}',
+            data='{"files": [{"name": "a.txt", "size": 100}]}',
             content_type='application/json',
         )
 
@@ -104,7 +104,7 @@ class ChatUploadUrlViewTests(TestCase):
 
         response = self.client.post(
             reverse('chat_upload_url', args=[self.conversation.id]),
-            data='{"filenames": ["a.txt"]}',
+            data='{"files": [{"name": "a.txt", "size": 100}]}',
             content_type='application/json',
         )
 
@@ -116,7 +116,7 @@ class ChatUploadUrlViewTests(TestCase):
 
         response = self.client.post(
             reverse('chat_upload_url', args=[self.conversation.id]),
-            data='{"filenames": ["a.txt"]}',
+            data='{"files": [{"name": "a.txt", "size": 100}]}',
             content_type='application/json',
         )
 
@@ -131,7 +131,7 @@ class ChatUploadUrlViewTests(TestCase):
         self.client.force_login(self.student.user)
         response = self.client.post(
             reverse('chat_upload_url', args=[self.conversation.id]),
-            data='{"filenames": ["a.txt", "b.txt"]}',
+            data='{"files": [{"name": "a.txt", "size": 100}, {"name": "b.txt", "size": 100}]}',
             content_type='application/json',
         )
         self.assertEqual(response.status_code, 400)

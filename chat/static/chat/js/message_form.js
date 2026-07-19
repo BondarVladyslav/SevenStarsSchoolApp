@@ -183,10 +183,10 @@ function initChatSocket(options) {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': csrfToken,
             },
-            body: JSON.stringify({ filenames: [file.name] }),
+            body: JSON.stringify({ files: [{ name: file.name, size: file.size }] }),
         });
 
-        if (!urlResponse.ok) throw new Error('upload-url request failed');
+        if (!urlResponse.ok) throw new Error(await urlResponse.text());
         const { uploads } = await urlResponse.json();
         const { upload_url, content_type, key } = uploads[0];
 
@@ -226,7 +226,7 @@ function initChatSocket(options) {
             try {
                 fileKey = await uploadFileToR2(fileInput.files[0]);
             } catch (err) {
-                alert('Не вдалося завантажити файл. Спробуйте ще раз.');
+                alert(err.message || 'Не вдалося завантажити файл. Спробуйте ще раз.');
                 if (submitBtn) {
                     submitBtn.disabled = false;
                     submitBtn.textContent = originalLabel;
