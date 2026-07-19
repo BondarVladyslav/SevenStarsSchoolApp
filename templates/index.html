@@ -97,6 +97,13 @@
         .service-card.s-green { background: var(--green); }
         .service-card.s-yellow { background: var(--yellow); }
 
+        .service-card.s-purple .service-details li::before { background: var(--purple-dark); }
+        .service-card.s-pink .service-details li::before { background: var(--pink-dark); }
+        .service-card.s-blue .service-details li::before { background: var(--blue-dark); }
+        .service-card.s-orange .service-details li::before { background: var(--orange-dark); }
+        .service-card.s-green .service-details li::before { background: var(--green-dark); }
+        .service-card.s-yellow .service-details li::before { background: var(--yellow-dark); }
+
         .service-card h3 {
             font-family: 'Yanone Kaffeesatz', sans-serif;
             font-size: 28px;
@@ -114,9 +121,13 @@
         }
 
         .service-btn {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
             border: 2px solid rgba(255,255,255,0.8);
+            background: transparent;
             color: #fff;
+            font-family: 'Manrope', sans-serif;
             font-size: 13px;
             font-weight: 700;
             letter-spacing: 1px;
@@ -125,10 +136,60 @@
             border-radius: 50px;
             text-decoration: none;
             align-self: flex-start;
+            cursor: pointer;
             transition: background 0.2s;
         }
 
         .service-btn:hover { background: rgba(255,255,255,0.2); }
+
+        .service-btn-icon {
+            width: 12px;
+            height: 12px;
+            flex-shrink: 0;
+            transition: transform 0.3s ease;
+        }
+
+        .service-btn.open .service-btn-icon { transform: rotate(180deg); }
+
+        .service-details {
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows 0.35s ease;
+        }
+
+        .service-details.open {
+            grid-template-rows: 1fr;
+        }
+
+        .service-details-inner {
+            overflow: hidden;
+        }
+
+        .service-details ul {
+            list-style: none;
+            padding: 0;
+            margin: 4px 0 0;
+            font-size: 14px;
+            line-height: 1.7;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .service-details li {
+            position: relative;
+            padding-left: 22px;
+        }
+
+        .service-details li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 4px;
+            width: 12px;
+            height: 12px;
+            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+        }
 
         /* ABOUT */
         .about { padding: 0 60px 80px; max-width: var(--max-width); margin: 0 auto; }
@@ -561,7 +622,25 @@
         <div class="service-card s-purple">
             <h3>Підготовка до НМТ, ЄВІ</h3>
             <ul><li>Англійська мова, українська мова, математика, історія, фізика для учнів 10, 11 класів</li></ul>
-            <a href="#" class="service-btn">Детальніше</a>
+            <button type="button" class="service-btn" aria-expanded="false" aria-controls="details-nmt">
+                <span class="service-btn-label">Детальніше</span>
+                <svg class="service-btn-icon" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <div class="service-details" id="details-nmt">
+                <div class="service-details-inner">
+                    <ul>
+                        <li>креативні, вмотивовані викладачі</li>
+                        <li>4 учні у групі</li>
+                        <li>групи з однаковим рівнем знань</li>
+                        <li>один урок у групі триває 60 хв/350 грн</li>
+                        <li>два уроки на тиждень</li>
+                        <li>якісні матеріали для підготовки</li>
+                        <li>підсумковий зріз знань кожен місяць</li>
+                    </ul>
+                </div>
+            </div>
         </div>
         <div class="service-card s-pink">
             <h3>Англійська мова</h3>
@@ -571,7 +650,24 @@
                 <li>Індивідуальні консультації</li>
                 <li>Власна бібліотека</li>
             </ul>
-            <a href="#" class="service-btn">Детальніше</a>
+            <button type="button" class="service-btn" aria-expanded="false" aria-controls="details-eng">
+                <span class="service-btn-label">Детальніше</span>
+                <svg class="service-btn-icon" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <div class="service-details" id="details-eng">
+                <div class="service-details-inner">
+                    <ul>
+                        <li>групові уроки 60 хв - 300 грн</li>
+                        <li>два уроки на тиждень</li>
+                        <li>6 учнів у групі</li>
+                        <li>індивідуальний урок - 45 хв/500 грн, 60 хв/600 грн</li>
+                        <li>безкоштовне користування бібліотекою</li>
+                        <li>розмовний клуб по суботах online</li>
+                    </ul>
+                </div>
+            </div>
         </div>
         <div class="service-card s-blue">
             <h3>Німецька мова</h3>
@@ -581,7 +677,24 @@
                 <li>Індивідуальні консультації</li>
                 <li>Власна бібліотека</li>
             </ul>
-            <a href="#" class="service-btn">Детальніше</a>
+            <button type="button" class="service-btn" aria-expanded="false" aria-controls="details-deu">
+                <span class="service-btn-label">Детальніше</span>
+                <svg class="service-btn-icon" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <div class="service-details" id="details-deu">
+                <div class="service-details-inner">
+                    <ul>
+                        <li>групові уроки 60 хв - 300 грн</li>
+                        <li>два уроки на тиждень</li>
+                        <li>4-6 учнів у групі</li>
+                        <li>індивідуальний урок - 45 хв/500 грн, 60 хв/600 грн</li>
+                        <li>безкоштовне користування бібліотекою</li>
+                        <li>цікаві додаткові матеріали</li>
+                    </ul>
+                </div>
+            </div>
         </div>
         <div class="service-card s-orange">
             <h3>Українська мова</h3>
@@ -590,17 +703,69 @@
                 <li>Індивідуальні консультації</li>
                 <li>Власна бібліотека</li>
             </ul>
-            <a href="#" class="service-btn">Детальніше</a>
+            <button type="button" class="service-btn" aria-expanded="false" aria-controls="details-ukr">
+                <span class="service-btn-label">Детальніше</span>
+                <svg class="service-btn-icon" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <div class="service-details" id="details-ukr">
+                <div class="service-details-inner">
+                    <ul>
+                        <li>групові уроки 60 хв - 300 грн</li>
+                        <li>два уроки на тиждень</li>
+                        <li>4-6 учнів у групі</li>
+                        <li>індивідуальний урок - 45 хв/500 грн, 60 хв/600 грн</li>
+                        <li>безкоштовне користування бібліотекою</li>
+                        <li>цікаві додаткові матеріали</li>
+                    </ul>
+                </div>
+            </div>
         </div>
         <div class="service-card s-green">
             <h3>Математика</h3>
             <ul><li>Групові та індивідуальні заняття для дітей 1-4 та 5-9 класів</li></ul>
-            <a href="#" class="service-btn">Детальніше</a>
+            <button type="button" class="service-btn" aria-expanded="false" aria-controls="details-math">
+                <span class="service-btn-label">Детальніше</span>
+                <svg class="service-btn-icon" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <div class="service-details" id="details-math">
+                <div class="service-details-inner">
+                    <ul>
+                        <li>групові уроки 60 хв - 300 грн</li>
+                        <li>два уроки на тиждень</li>
+                        <li>4-6 учнів у групі</li>
+                        <li>індивідуальний урок - 45 хв/500 грн, 60 хв/600 грн</li>
+                        <li>безкоштовне користування бібліотекою</li>
+                        <li>цікаві додаткові матеріали</li>
+                    </ul>
+                </div>
+            </div>
         </div>
         <div class="service-card s-yellow">
             <h3>Історія</h3>
             <ul><li>Групові та індивідуальні заняття для дітей 5-9 класів</li></ul>
-            <a href="#" class="service-btn">Детальніше</a>
+            <button type="button" class="service-btn" aria-expanded="false" aria-controls="details-history">
+                <span class="service-btn-label">Детальніше</span>
+                <svg class="service-btn-icon" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <div class="service-details" id="details-history">
+                <div class="service-details-inner">
+                    <ul>
+                        <li>креативні, вмотивовані викладачі</li>
+                        <li>4 учні у групі</li>
+                        <li>групи з однаковим рівнем знань</li>
+                        <li>один урок у групі триває 60 хв/350 грн</li>
+                        <li>два уроки на тиждень</li>
+                        <li>якісні матеріали для підготовки</li>
+                        <li>підсумковий зріз знань кожен місяць</li>
+                    </ul>
+                </div>
+            </div>
         </div>
     </div>
 </section>
@@ -952,5 +1117,20 @@ addSwipe(galleryTrack,
     () => { galleryCurrent = galleryCurrent < galleryMax ? galleryCurrent + 1 : 0; updateGallery(); },
     () => { galleryCurrent = galleryCurrent > 0 ? galleryCurrent - 1 : galleryMax; updateGallery(); }
 );
+
+// SERVICE CARDS — expand/collapse the "Детальніше" details list
+document.querySelectorAll('.service-btn').forEach((btn) => {
+    const targetId = btn.getAttribute('aria-controls');
+    const panel = document.getElementById(targetId);
+    const label = btn.querySelector('.service-btn-label');
+    if (!panel) return;
+
+    btn.addEventListener('click', () => {
+        const isOpen = panel.classList.toggle('open');
+        btn.classList.toggle('open', isOpen);
+        btn.setAttribute('aria-expanded', String(isOpen));
+        if (label) label.textContent = isOpen ? 'Згорнути' : 'Детальніше';
+    });
+});
 </script>
 {% endblock %}

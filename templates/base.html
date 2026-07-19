@@ -24,6 +24,24 @@
             outline: none;
         }
 
+        button,
+        a {
+            touch-action: manipulation;
+            -webkit-user-drag: none;
+            user-drag: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        button *,
+        a * {
+            -webkit-user-drag: none;
+            user-drag: none;
+            pointer-events: none;
+        }
+
         :root {
             --orange: #FF5731;
             --purple: #706BFA;
@@ -31,6 +49,12 @@
             --green: #88C03A;
             --pink: #FF7076;
             --blue: #469AFD;
+            --orange-dark: #CC4627;
+            --purple-dark: #5A56C8;
+            --yellow-dark: #C78E29;
+            --green-dark: #6D9A2E;
+            --pink-dark: #CC5A5E;
+            --blue-dark: #387BCA;
             --text: #60495D;
             --grid-color: rgba(100, 170, 220, 0.2);
             --max-width: 1300px;
