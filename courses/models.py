@@ -35,6 +35,7 @@ class Homework(models.Model):
     deadline = models.DateTimeField()
     class Meta:
         ordering = ['id']
+        unique_together = ('lesson', 'lesson_date')
 
 class HomeworkFile(models.Model):
     homework = models.ForeignKey(Homework, on_delete=models.CASCADE, related_name='files')

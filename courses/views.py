@@ -289,8 +289,19 @@ def homework_create_or_edit(request, group_id, homework_id=None):
                 lesson_occurrence = request.POST.get('lesson_occurrence')
                 if lesson_occurrence:
                     lesson_id, date_str = lesson_occurrence.split('_')
-                    homework.lesson_id = int(lesson_id)
-                    homework.lesson_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                    lesson_id = int(lesson_id)
+                    lesson_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+
+                    occurrence_taken = Homework.objects.filter(
+                        lesson_id=lesson_id, lesson_date=lesson_date,
+                    ).exclude(pk=homework.pk).exists()
+                    if occurrence_taken:
+                        return HttpResponseBadRequest(
+                            'До цього заняття вже прикріплено інше домашнє завдання'
+                        )
+
+                    homework.lesson_id = lesson_id
+                    homework.lesson_date = lesson_date
                 else:
                     homework.lesson = None
                     homework.lesson_date = None
@@ -320,6 +331,16 @@ def homework_create_or_edit(request, group_id, homework_id=None):
  
     existing_files = homework.files.all() if homework else []
     upcoming_lessons = get_upcoming_lesson_occurrences(group)
+
+    taken_occurrences = set(
+        Homework.objects.filter(group=group, lesson__isnull=False, lesson_date__isnull=False)
+        .exclude(pk=homework.pk if homework else None)
+        .values_list('lesson_id', 'lesson_date')
+    )
+    upcoming_lessons = [
+        occurrence for occurrence in upcoming_lessons
+        if (occurrence['lesson'].id, occurrence['date']) not in taken_occurrences
+    ]
  
     context = {
         'form': form,
@@ -330,7 +351,6 @@ def homework_create_or_edit(request, group_id, homework_id=None):
         'upcoming_lessons': upcoming_lessons,
     }
     return render(request, 'courses/homework_create_or_edit.html', context)
-
 
 @login_required
 def detail_student(request, group_id, student_id):

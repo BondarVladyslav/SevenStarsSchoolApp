@@ -293,71 +293,6 @@ class DetailHomeworkViewTests(TestCase):
         self.assertTrue(HomeworkSubmission.objects.filter(id=submission.id).exists())
 
 
-class HomeworkCreateOrEditViewTests(TestCase):
-    def setUp(self):
-        subject = Subject.objects.create(name='Математика')
-        self.teacher_user, self.teacher = make_user_with_role('teacher1', Teacher)
-        self.group = Group.objects.create(name='Group A', subject=subject, teacher=self.teacher)
-
-    def test_non_teacher_gets_permission_denied(self):
-        user, _s = make_user_with_role('student1', Student)
-        self.client.force_login(user)
-
-        response = self.client.get(reverse('create_homework', args=[self.group.id]))
-
-        self.assertEqual(response.status_code, 403)
-
-    def test_teacher_of_other_group_gets_404(self):
-        other_teacher_user, _t = make_user_with_role('teacher2', Teacher)
-        self.client.force_login(other_teacher_user)
-
-        response = self.client.get(reverse('create_homework', args=[self.group.id]))
-
-        self.assertEqual(response.status_code, 404)
-
-    def test_teacher_can_create_homework(self):
-        self.client.force_login(self.teacher_user)
-
-        response = self.client.post(reverse('create_homework', args=[self.group.id]), {
-            'action': 'save',
-            'title': 'Нове ДЗ',
-            'description': 'Опис',
-            'deadline': '2026-08-01T10:00',
-        })
-
-        self.assertRedirects(response, reverse('detail_group', kwargs={'group_id': self.group.id}))
-        self.assertTrue(Homework.objects.filter(group=self.group, title='Нове ДЗ').exists())
-
-    def test_teacher_can_delete_homework(self):
-        homework = Homework.objects.create(
-            group=self.group, title='ДЗ', description='Опис',
-            deadline=timezone.now() + timedelta(days=1),
-        )
-        self.client.force_login(self.teacher_user)
-
-        response = self.client.post(reverse('create_homework', args=[self.group.id]), {
-            'action': 'delete',
-            'homework_id': homework.id,
-        })
-
-        self.assertRedirects(response, reverse('detail_group', kwargs={'group_id': self.group.id}))
-        self.assertFalse(Homework.objects.filter(id=homework.id).exists())
-
-    def test_too_many_files_on_creation_rejected(self):
-        self.client.force_login(self.teacher_user)
-        files = [SimpleUploadedFile(f'f{i}.txt', b'content') for i in range(8)]
-
-        response = self.client.post(reverse('create_homework', args=[self.group.id]), {
-            'action': 'save',
-            'title': 'ДЗ',
-            'description': 'Опис',
-            'deadline': '2026-08-01T10:00',
-            'files': files,
-        })
-
-        self.assertEqual(response.status_code, 400)
-
-
 class DetailStudentViewTests(TestCase):
     def setUp(self):
         subject = Subject.objects.create(name='Математика')
@@ -689,6 +624,57 @@ class HomeworkCreateOrEditViewTests(TestCase):
 
         self.assertEqual(response.status_code, 404)
 
+    def test_taken_lesson_occurrence_excluded_from_create_form(self):
+        from schedule.models import Lesson
+
+        lesson = Lesson.objects.create(
+            group=self.group, weekday=timezone.now().date().weekday(),
+            start_time='10:00', end_time='11:00',
+        )
+        lesson_date = timezone.now().date()
+        self.homework.lesson = lesson
+        self.homework.lesson_date = lesson_date
+        self.homework.save()
+
+        self.client.force_login(self.teacher_user)
+        response = self.client.get(reverse('create_homework', args=[self.group.id]))
+
+        occurrences = response.context['upcoming_lessons']
+        self.assertNotIn((lesson.id, lesson_date), {(o['lesson'].id, o['date']) for o in occurrences})
+
+    def test_own_lesson_occurrence_stays_in_edit_form(self):
+        from schedule.models import Lesson
+
+        lesson = Lesson.objects.create(
+            group=self.group, weekday=timezone.now().date().weekday(),
+            start_time='10:00', end_time='11:00',
+        )
+        lesson_date = timezone.now().date()
+        self.homework.lesson = lesson
+        self.homework.lesson_date = lesson_date
+        self.homework.save()
+
+        self.client.force_login(self.teacher_user)
+        response = self.client.get(
+            reverse('edit_homework', args=[self.group.id, self.homework.id])
+        )
+
+        occurrences = response.context['upcoming_lessons']
+        self.assertIn((lesson.id, lesson_date), {(o['lesson'].id, o['date']) for o in occurrences})
+
+    def test_edit_form_renders_deadline_in_iso_format_for_datetime_local_input(self):
+        self.client.force_login(self.teacher_user)
+
+        response = self.client.get(
+            reverse('edit_homework', args=[self.group.id, self.homework.id])
+        )
+
+        content = response.content.decode()
+        local_deadline = timezone.localtime(self.homework.deadline)
+        expected_value = local_deadline.strftime('%Y-%m-%dT%H:%M')
+        self.assertIn(f'value="{expected_value}"', content)
+        self.assertNotIn(local_deadline.strftime('%d.%m.%Y'), content)
+
     def test_teacher_cannot_delete_file_from_foreign_groups_homework(self):
         self.client.force_login(self.other_teacher_user)
 
@@ -775,6 +761,87 @@ class HomeworkCreateOrEditViewTests(TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertTrue(Homework.objects.filter(id=self.homework.id).exists())
         self.assertTrue(Homework.objects.filter(id=other_group_homework.id).exists())
+
+    def test_creating_homework_for_an_already_taken_lesson_occurrence_is_rejected(self):
+        from schedule.models import Lesson
+
+        lesson = Lesson.objects.create(group=self.group, weekday=0, start_time='10:00', end_time='11:00')
+        lesson_date = timezone.now().date()
+        self.homework.lesson = lesson
+        self.homework.lesson_date = lesson_date
+        self.homework.save()
+
+        self.client.force_login(self.teacher_user)
+
+        response = self.client.post(
+            reverse('create_homework', args=[self.group.id]),
+            {
+                'action': 'save',
+                'title': 'Друге ДЗ на те саме заняття',
+                'description': 'Опис',
+                'deadline': (timezone.now() + timedelta(days=5)).strftime('%Y-%m-%dT%H:%M'),
+                'lesson_occurrence': f'{lesson.id}_{lesson_date.strftime("%Y-%m-%d")}',
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Homework.objects.filter(title='Друге ДЗ на те саме заняття').exists())
+
+    def test_editing_homework_into_an_already_taken_lesson_occurrence_is_rejected(self):
+        from schedule.models import Lesson
+
+        lesson = Lesson.objects.create(group=self.group, weekday=0, start_time='10:00', end_time='11:00')
+        lesson_date = timezone.now().date()
+        self.homework.lesson = lesson
+        self.homework.lesson_date = lesson_date
+        self.homework.save()
+
+        other_homework = Homework.objects.create(
+            group=self.group, title='Інше ДЗ', deadline=timezone.now() + timedelta(days=3),
+        )
+
+        self.client.force_login(self.teacher_user)
+
+        response = self.client.post(
+            reverse('edit_homework', args=[self.group.id, other_homework.id]),
+            {
+                'action': 'save',
+                'title': 'Інше ДЗ',
+                'description': 'Опис',
+                'deadline': (timezone.now() + timedelta(days=5)).strftime('%Y-%m-%dT%H:%M'),
+                'lesson_occurrence': f'{lesson.id}_{lesson_date.strftime("%Y-%m-%d")}',
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        other_homework.refresh_from_db()
+        self.assertIsNone(other_homework.lesson)
+
+    def test_editing_homework_keeping_its_own_occurrence_is_allowed(self):
+        from schedule.models import Lesson
+
+        lesson = Lesson.objects.create(group=self.group, weekday=0, start_time='10:00', end_time='11:00')
+        lesson_date = timezone.now().date()
+        self.homework.lesson = lesson
+        self.homework.lesson_date = lesson_date
+        self.homework.save()
+
+        self.client.force_login(self.teacher_user)
+
+        response = self.client.post(
+            reverse('edit_homework', args=[self.group.id, self.homework.id]),
+            {
+                'action': 'save',
+                'title': 'ДЗ 1 (оновлено)',
+                'description': 'Опис',
+                'deadline': (timezone.now() + timedelta(days=5)).strftime('%Y-%m-%dT%H:%M'),
+                'lesson_occurrence': f'{lesson.id}_{lesson_date.strftime("%Y-%m-%d")}',
+            },
+        )
+
+        self.assertRedirects(response, reverse('detail_group', args=[self.group.id]))
+        self.homework.refresh_from_db()
+        self.assertEqual(self.homework.title, 'ДЗ 1 (оновлено)')
 
 
 class DetailSubmissionViewTeacherActionsTests(TestCase):

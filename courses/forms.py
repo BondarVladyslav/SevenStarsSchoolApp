@@ -6,7 +6,11 @@ from courses.models import HomeworkSubmission, Homework
 class HomeworkPostForm(forms.ModelForm):
     deadline = forms.DateTimeField(
         required=True,
-        widget=forms.DateTimeInput(attrs={'type': 'datetime-local', 'required': 'required'}),
+        widget=forms.DateTimeInput(
+            attrs={'type': 'datetime-local', 'required': 'required'},
+            format='%Y-%m-%dT%H:%M',
+        ),
+        input_formats=['%Y-%m-%dT%H:%M'],
         error_messages={'required': 'Оберіть дедлайн'},
     )
 
@@ -33,4 +37,3 @@ class CheckSubmissionForm(forms.ModelForm):
     class Meta:
         model = HomeworkSubmission
         fields = ('grade', 'status', 'teacher_comment')
-
