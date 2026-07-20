@@ -412,6 +412,112 @@ class DetailStudentViewTests(TestCase):
         self.assertRedirects(response, reverse('detail_group', kwargs={'group_id': self.group.id}))
         self.assertFalse(self.group.students.filter(pk=self.student.pk).exists())
 
+    def test_homework_linked_lesson_grade_is_attached_to_submission(self):
+        from schedule.models import Lesson, LessonParticipation
+
+        lesson = Lesson.objects.create(group=self.group, weekday=0, start_time='10:00', end_time='11:00')
+        lesson_date = timezone.now().date()
+        homework = Homework.objects.create(
+            group=self.group, title='ДЗ 1', description='Опис',
+            deadline=timezone.now() + timedelta(days=1),
+            lesson=lesson, lesson_date=lesson_date,
+        )
+        submission = HomeworkSubmission.objects.create(homework=homework, student=self.student)
+        participation = LessonParticipation.objects.create(
+            lesson=lesson, lesson_date=lesson_date, student=self.student, score=8,
+        )
+
+        self.client.force_login(self.teacher_user)
+        response = self.client.get(reverse('detail_student', args=[self.group.id, self.student.id]))
+
+        rendered_item = response.context['student_homeworks'][0]
+        self.assertEqual(rendered_item['submission'].id, submission.id)
+        self.assertEqual(rendered_item['lesson_participation'], participation)
+
+    def test_unsubmitted_homework_shows_not_submitted_badge(self):
+        Homework.objects.create(
+            group=self.group, title='Нездане ДЗ', description='Опис',
+            deadline=timezone.now() + timedelta(days=1),
+        )
+
+        self.client.force_login(self.teacher_user)
+        response = self.client.get(reverse('detail_student', args=[self.group.id, self.student.id]))
+
+        content = response.content.decode()
+        self.assertIn('Нездане ДЗ', content)
+        self.assertIn('Не здано', content)
+
+        rendered_item = response.context['student_homeworks'][0]
+        self.assertIsNone(rendered_item['submission'])
+
+    def test_standalone_lesson_grade_is_not_attached_to_any_homework(self):
+        from schedule.models import Lesson, LessonParticipation
+
+        lesson = Lesson.objects.create(group=self.group, weekday=0, start_time='10:00', end_time='11:00')
+        lesson_date = timezone.now().date()
+        participation = LessonParticipation.objects.create(
+            lesson=lesson, lesson_date=lesson_date, student=self.student, score=6,
+        )
+
+        self.client.force_login(self.teacher_user)
+        response = self.client.get(reverse('detail_student', args=[self.group.id, self.student.id]))
+
+        self.assertEqual(list(response.context['standalone_lesson_grades']), [participation])
+
+    def test_lesson_grade_from_another_group_is_excluded(self):
+        from schedule.models import Lesson, LessonParticipation
+
+        subject = Subject.objects.create(name='Англійська')
+        other_group = Group.objects.create(name='Group B', subject=subject, teacher=self.teacher)
+        other_lesson = Lesson.objects.create(group=other_group, weekday=1, start_time='12:00', end_time='13:00')
+        LessonParticipation.objects.create(
+            lesson=other_lesson, lesson_date=timezone.now().date(), student=self.student, score=9,
+        )
+
+        self.client.force_login(self.teacher_user)
+        response = self.client.get(reverse('detail_student', args=[self.group.id, self.student.id]))
+
+        self.assertEqual(list(response.context['standalone_lesson_grades']), [])
+
+    def test_homework_without_lesson_shows_only_dz_badge(self):
+        deadline = timezone.now() + timedelta(days=1)
+        homework = Homework.objects.create(
+            group=self.group, title='ДЗ без уроку', description='Опис',
+            deadline=deadline,
+        )
+        HomeworkSubmission.objects.create(homework=homework, student=self.student, status='checked', grade=45)
+
+        self.client.force_login(self.teacher_user)
+        response = self.client.get(reverse('detail_student', args=[self.group.id, self.student.id]))
+
+        content = response.content.decode()
+        expected_date = deadline.strftime('%d.%m')
+        self.assertIn(f'дз {expected_date}: 45/50%', content)
+        self.assertNotIn('урок ', content)
+
+    def test_homework_with_lesson_shows_both_badges(self):
+        from schedule.models import Lesson, LessonParticipation
+
+        lesson = Lesson.objects.create(group=self.group, weekday=0, start_time='10:00', end_time='11:00')
+        lesson_date = timezone.now().date()
+        deadline = timezone.now() + timedelta(days=1)
+        homework = Homework.objects.create(
+            group=self.group, title='ДЗ з уроком', description='Опис',
+            deadline=deadline,
+            lesson=lesson, lesson_date=lesson_date,
+        )
+        HomeworkSubmission.objects.create(homework=homework, student=self.student, status='checked', grade=40)
+        LessonParticipation.objects.create(
+            lesson=lesson, lesson_date=lesson_date, student=self.student, score=35,
+        )
+
+        self.client.force_login(self.teacher_user)
+        response = self.client.get(reverse('detail_student', args=[self.group.id, self.student.id]))
+
+        content = response.content.decode()
+        self.assertIn(f'урок {lesson_date.strftime("%d.%m")}: 35/50%', content)
+        self.assertIn(f'дз {deadline.strftime("%d.%m")}: 40/50%', content)
+
 
 class DetailSubmissionViewTests(TestCase):
     def setUp(self):

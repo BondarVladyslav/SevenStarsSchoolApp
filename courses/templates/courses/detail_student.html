@@ -10,6 +10,13 @@
             flex-wrap: wrap;
             gap: 12px;
         }
+
+        .grade-badges {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+        }
 {% endblock %}
 
 {% block content %}
@@ -40,27 +47,49 @@
             <div class="panel-title">Здані роботи</div>
 
             {% if student_homeworks %}
-                {% for homework in student_homeworks %}
-                <a href="{% url 'detail_submission' homework.id %}" class="list-card">
+                {% for item in student_homeworks %}
+                {% if item.submission %}<a href="{% url 'detail_submission' item.submission.id %}" class="list-card">{% else %}<div class="list-card">{% endif %}
                     <div class="list-card-top">
-                        <span class="list-card-title">{{ homework.homework.title }}</span>
-                        {% if homework.status == 'pending' %}
-                            <span class="status-badge status-pending">На перевірці</span>
-                        {% elif homework.status == 'checked' %}
-                            <span class="status-badge status-checked">{{ homework.grade }}%</span>
-                        {% elif homework.status == 'need_revision' %}
-                            <span class="status-badge status-revision">Потребує виправлень</span>
-                        {% endif %}
+                        <span class="list-card-title">{{ item.homework.title }}</span>
+                        <div class="grade-badges">
+                            {% if item.homework.lesson_id %}
+                                <span class="status-badge status-checked">урок {{ item.homework.lesson_date|date:"d.m" }}: {{ item.lesson_participation.score|default:"?" }}/50%</span>
+                            {% endif %}
+                            {% if not item.submission %}
+                                <span class="status-badge status-revision">Не здано (дедлайн {{ item.homework.deadline|date:"d.m" }})</span>
+                            {% elif item.submission.status == 'checked' %}
+                                <span class="status-badge status-checked">дз {{ item.homework.deadline|date:"d.m" }}: {{ item.submission.grade|default:"?" }}/50%</span>
+                            {% elif item.submission.status == 'need_revision' %}
+                                <span class="status-badge status-revision">дз {{ item.homework.deadline|date:"d.m" }}: ?/50%</span>
+                            {% else %}
+                                <span class="status-badge status-pending">дз {{ item.homework.deadline|date:"d.m" }}: ?/50%</span>
+                            {% endif %}
+                        </div>
                     </div>
-                    {% if homework.text %}
-                        <div class="list-card-preview">{{ homework.text|truncatechars:40 }}</div>
+                    {% if item.submission.text %}
+                        <div class="list-card-preview">{{ item.submission.text|truncatechars:40 }}</div>
                     {% endif %}
-                </a>
+                {% if item.submission %}</a>{% else %}</div>{% endif %}
                 {% endfor %}
             {% else %}
-                <div class="list-card-empty">Учень ще не здавав робіт.</div>
+                <div class="list-card-empty">У групі ще немає домашніх завдань.</div>
             {% endif %}
         </div>
+
+        {% if standalone_lesson_grades %}
+        <div class="content-card">
+            <div class="panel-title">Оцінки за уроки без ДЗ</div>
+
+            {% for participation in standalone_lesson_grades %}
+            <div class="entity-row">
+                <div class="entity-row-main">
+                    <span class="entity-row-title">{{ participation.lesson_date }}</span>
+                </div>
+                <span class="status-badge status-checked">урок {{ participation.lesson_date|date:"d.m" }}: {{ participation.score|default:"?" }}/50%</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
 
         <div class="content-card">
             <div class="panel-title">Керування обліковим записом</div>

@@ -11,7 +11,17 @@
             gap: 12px;
         }
 
-        .status-select-row .form-field { flex: 1; margin-bottom: 0; }
+        .status-select-row .form-field {
+            flex: 1;
+            min-width: 0;
+            margin-bottom: 0;
+        }
+
+        .status-select-row .form-field select,
+        .status-select-row .form-field input {
+            width: 100%;
+            min-width: 0;
+        }
 
         .grading-form .form-field:not(:first-child) { margin-top: 18px; }
 {% endblock %}
@@ -84,7 +94,7 @@
                             <polyline points="7 10 12 15 17 10"></polyline>
                             <line x1="12" y1="15" x2="12" y2="3"></line>
                         </svg>
-                        {{ file.file.name|basename }}
+                        <span>{{ file.file.name|basename }}</span>
                     </a>
                 </li>
                 {% endfor %}

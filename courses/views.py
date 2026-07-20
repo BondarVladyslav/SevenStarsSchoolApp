@@ -8,6 +8,7 @@ from django.http import Http404, HttpResponse, HttpResponseBadRequest, JsonRespo
 from django.shortcuts import redirect, render
 import secrets
 import string
+from schedule.models import LessonParticipation
 from chat.forms import SendMessageForm
 from chat.models import Conversation
 from chat.utils import handle_chat_message
@@ -366,10 +367,49 @@ def detail_student(request, group_id, student_id):
 
     form, _ = handle_chat_message(request, conversation)
 
-    student_homeworks = student.submissions.select_related('homework').order_by('-id').filter(homework__group=group)
+    group_homeworks = Homework.objects.filter(group=group).select_related('lesson').order_by('-id')
+
+    submissions_by_homework_id = {
+        s.homework_id: s
+        for s in HomeworkSubmission.objects.filter(student=student, homework__group=group)
+    }
+
+    lesson_participations = LessonParticipation.objects.filter(
+        student=student,
+        lesson__group=group,
+    ).select_related('lesson')
+
+    homework_occurrences = set(
+        group_homeworks.exclude(lesson__isnull=True).exclude(lesson_date__isnull=True)
+        .values_list('lesson_id', 'lesson_date')
+    )
+
+    participation_by_occurrence = {
+        (p.lesson_id, p.lesson_date): p for p in lesson_participations
+    }
+
+    student_homeworks = []
+    for homework in group_homeworks:
+        lesson_participation = None
+        if homework.lesson_id and homework.lesson_date:
+            lesson_participation = participation_by_occurrence.get(
+                (homework.lesson_id, homework.lesson_date)
+            )
+        student_homeworks.append({
+            'homework': homework,
+            'submission': submissions_by_homework_id.get(homework.id),
+            'lesson_participation': lesson_participation,
+        })
+
+    standalone_lesson_grades = [
+        p for p in lesson_participations
+        if (p.lesson_id, p.lesson_date) not in homework_occurrences
+    ]
+    standalone_lesson_grades.sort(key=lambda p: p.lesson_date, reverse=True)
 
     context = {
         'student_homeworks': student_homeworks,
+        'standalone_lesson_grades': standalone_lesson_grades,
         'group': group,
         'student': student,
         'conversation_messages': conversation.messages.select_related('sender').order_by('-id')[:100],

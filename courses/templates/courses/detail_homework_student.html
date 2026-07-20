@@ -49,7 +49,7 @@
                             <polyline points="7 10 12 15 17 10"></polyline>
                             <line x1="12" y1="15" x2="12" y2="3"></line>
                         </svg>
-                        {{ homework_file.file.name|basename }}
+                        <span>{{ homework_file.file.name|basename }}</span>
                     </a>
                 </li>
                 {% endfor %}
@@ -86,7 +86,7 @@
                                 <polyline points="7 10 12 15 17 10"></polyline>
                                 <line x1="12" y1="15" x2="12" y2="3"></line>
                             </svg>
-                            {{ submission_file.file.name|basename }}
+                            <span>{{ submission_file.file.name|basename }}</span>
                         </a>
                     </li>
                     {% endfor %}
