@@ -23,10 +23,14 @@
             font-family: 'Manrope', sans-serif;
             font-size: 14px;
             color: var(--text);
+            text-decoration: none;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            transition: color 0.2s;
         }
+
+        .existing-file-name:hover { color: var(--orange); }
 
         .existing-file-name svg { width: 16px; height: 16px; flex-shrink: 0; }
 
@@ -99,13 +103,13 @@
                     <label>Прикріплені файли</label>
                     {% for homework_file in existing_files %}
                     <div class="existing-file-row">
-                        <span class="existing-file-name">
+                        <a href="{% url 'download_homework_file' homework_file.id %}" class="existing-file-name" target="_blank" rel="noopener">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                 <polyline points="14 2 14 8 20 8"></polyline>
                             </svg>
                             {{ homework_file.file.name|basename }}
-                        </span>
+                        </a>
                         <form method="post" class="delete-file-form">
                             {% csrf_token %}
                             <input type="hidden" name="action" value="delete_file">

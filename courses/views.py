@@ -8,7 +8,6 @@ from django.http import Http404, HttpResponse, HttpResponseBadRequest, JsonRespo
 from django.shortcuts import redirect, render
 import secrets
 import string
-from schedule.models import LessonParticipation
 from chat.forms import SendMessageForm
 from chat.models import Conversation
 from chat.utils import handle_chat_message
@@ -16,6 +15,7 @@ from SevenStarsSchool.storage_utils import build_presigned_uploads, presigned_do
 from courses.forms import CheckSubmissionForm, HomeworkPostForm, HomeworkSubmissionForm
 from courses.models import Group, Homework, HomeworkFile, HomeworkSubmission, SubmissionFile
 from schedule.utils import get_upcoming_lesson_occurrences
+from schedule.models import LessonParticipation
 from users.models import Parent, Student, Teacher
 from django.shortcuts import get_object_or_404
 from django.db.models import Prefetch
@@ -351,6 +351,41 @@ def homework_create_or_edit(request, group_id, homework_id=None):
         'upcoming_lessons': upcoming_lessons,
     }
     return render(request, 'courses/homework_create_or_edit.html', context)
+
+
+def _compute_student_group_stats(student, group):
+    homeworks = list(Homework.objects.filter(group=group))
+    submissions_by_homework_id = {
+        s.homework_id: s
+        for s in HomeworkSubmission.objects.filter(student=student, homework__group=group)
+    }
+
+    total_homeworks_count = len(homeworks)
+    submitted_count = sum(1 for hw in homeworks if hw.id in submissions_by_homework_id)
+    completion_percentage = (
+        round(submitted_count / total_homeworks_count * 100) if total_homeworks_count else None
+    )
+
+    graded_homework_grades = [
+        submissions_by_homework_id[hw.id].grade for hw in homeworks
+        if hw.id in submissions_by_homework_id and submissions_by_homework_id[hw.id].grade is not None
+    ]
+    average_homework_grade = (
+        round(sum(graded_homework_grades) / len(graded_homework_grades), 1)
+        if graded_homework_grades else None
+    )
+
+    scored_lesson_grades = list(
+        LessonParticipation.objects.filter(student=student, lesson__group=group, score__isnull=False)
+        .values_list('score', flat=True)
+    )
+    average_lesson_grade = (
+        round(sum(scored_lesson_grades) / len(scored_lesson_grades), 1)
+        if scored_lesson_grades else None
+    )
+
+    return completion_percentage, average_homework_grade, average_lesson_grade
+
 
 @login_required
 def detail_student(request, group_id, student_id):

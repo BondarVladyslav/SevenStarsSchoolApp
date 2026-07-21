@@ -190,6 +190,79 @@ class StudentEditOrCreateViewTests(TestCase):
         })
         self.assertFalse(student.parents.filter(pk=parent.pk).exists())
 
+    def test_group_stats_not_shown_when_creating_new_student(self):
+        response = self.client.get(reverse('create_student'))
+        self.assertEqual(response.context['group_stats'], [])
+
+    def test_group_stats_covers_all_groups_the_student_belongs_to(self):
+        subject = Subject.objects.create(name='Математика')
+        other_subject = Subject.objects.create(name='Англійська')
+        teacher_user = User.objects.create_user(username='teacher10', password='pass12345')
+        teacher = Teacher.objects.create(user=teacher_user)
+        group = Group.objects.create(name='Group A', subject=subject, teacher=teacher)
+        other_group = Group.objects.create(name='Group B', subject=other_subject, teacher=teacher)
+
+        student_user = User.objects.create_user(username='student10', password='pass12345')
+        student = Student.objects.create(user=student_user)
+        student.groups.add(group, other_group)
+
+        response = self.client.get(reverse('edit_student', args=[student.id]))
+
+        group_ids = {s['group'].id for s in response.context['group_stats']}
+        self.assertEqual(group_ids, {group.id, other_group.id})
+
+    def test_group_stats_shows_lowercase_teacher_full_name(self):
+        subject = Subject.objects.create(name='Математика')
+        teacher_user = User.objects.create_user(
+            username='teacher11', password='pass12345', first_name='Олена', last_name='Коваленко',
+        )
+        teacher = Teacher.objects.create(user=teacher_user)
+        group = Group.objects.create(name='Group A', subject=subject, teacher=teacher)
+
+        student_user = User.objects.create_user(username='student11', password='pass12345')
+        student = Student.objects.create(user=student_user)
+        student.groups.add(group)
+
+        response = self.client.get(reverse('edit_student', args=[student.id]))
+
+        content = response.content.decode()
+        self.assertIn('олена коваленко', content)
+        self.assertNotIn('Олена Коваленко', content)
+
+    def test_group_stats_reflect_completion_and_grades(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from courses.models import Homework, HomeworkSubmission
+
+        subject = Subject.objects.create(name='Математика')
+        teacher_user = User.objects.create_user(username='teacher12', password='pass12345')
+        teacher = Teacher.objects.create(user=teacher_user)
+        group = Group.objects.create(name='Group A', subject=subject, teacher=teacher)
+
+        student_user = User.objects.create_user(username='student12', password='pass12345')
+        student = Student.objects.create(user=student_user)
+        student.groups.add(group)
+
+        submitted_homework = Homework.objects.create(
+            group=group, title='Здане', description='Опис',
+            deadline=timezone.now() + timedelta(days=1),
+        )
+        Homework.objects.create(
+            group=group, title='Нездане', description='Опис',
+            deadline=timezone.now() + timedelta(days=1),
+        )
+        HomeworkSubmission.objects.create(
+            homework=submitted_homework, student=student, status='checked', grade=35,
+        )
+
+        response = self.client.get(reverse('edit_student', args=[student.id]))
+
+        stat = next(s for s in response.context['group_stats'] if s['group'].id == group.id)
+        self.assertEqual(stat['completion_percentage'], 50)
+        self.assertEqual(stat['average_homework_grade'], 35)
+
 
 class ParentEditOrCreateViewTests(TestCase):
     def setUp(self):

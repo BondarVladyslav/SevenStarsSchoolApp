@@ -426,7 +426,7 @@ class DetailStudentViewTests(TestCase):
         response = self.client.get(reverse('detail_student', args=[self.group.id, self.student.id]))
 
         content = response.content.decode()
-        expected_date = deadline.strftime('%d.%m')
+        expected_date = timezone.localtime(deadline).strftime('%d.%m')
         self.assertIn(f'дз {expected_date}: 45/50%', content)
         self.assertNotIn('урок ', content)
 
@@ -451,7 +451,7 @@ class DetailStudentViewTests(TestCase):
 
         content = response.content.decode()
         self.assertIn(f'урок {lesson_date.strftime("%d.%m")}: 35/50%', content)
-        self.assertIn(f'дз {deadline.strftime("%d.%m")}: 40/50%', content)
+        self.assertIn(f'дз {timezone.localtime(deadline).strftime("%d.%m")}: 40/50%', content)
 
 
 class DetailSubmissionViewTests(TestCase):
@@ -627,11 +627,11 @@ class HomeworkCreateOrEditViewTests(TestCase):
     def test_taken_lesson_occurrence_excluded_from_create_form(self):
         from schedule.models import Lesson
 
+        lesson_date = timezone.now().date() + timedelta(days=7)
         lesson = Lesson.objects.create(
-            group=self.group, weekday=timezone.now().date().weekday(),
+            group=self.group, weekday=lesson_date.weekday(),
             start_time='10:00', end_time='11:00',
         )
-        lesson_date = timezone.now().date()
         self.homework.lesson = lesson
         self.homework.lesson_date = lesson_date
         self.homework.save()
@@ -645,11 +645,11 @@ class HomeworkCreateOrEditViewTests(TestCase):
     def test_own_lesson_occurrence_stays_in_edit_form(self):
         from schedule.models import Lesson
 
+        lesson_date = timezone.now().date() + timedelta(days=7)
         lesson = Lesson.objects.create(
-            group=self.group, weekday=timezone.now().date().weekday(),
+            group=self.group, weekday=lesson_date.weekday(),
             start_time='10:00', end_time='11:00',
         )
-        lesson_date = timezone.now().date()
         self.homework.lesson = lesson
         self.homework.lesson_date = lesson_date
         self.homework.save()

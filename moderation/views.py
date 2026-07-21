@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.urls import reverse
 from chat.models import User
 from courses.models import Group, Level, Subject
+from courses.views import _compute_student_group_stats
 from materials.forms import MaterialEditForm
 from materials.models import Material, MaterialFile
 from moderation.forms import GroupEditForm, LevelEditForm, ParentEditForm, StudentEditForm, SubjectEditForm, TeacherEditForm
@@ -178,12 +179,26 @@ def student_edit_or_create(request, student_id=None):
         Parent.objects.exclude(children=student).distinct() if student else Parent.objects.none()
     )
 
+    group_stats = []
+    if student:
+        for student_group in student.groups.select_related('teacher__user').all():
+            completion_percentage, average_homework_grade, average_lesson_grade = _compute_student_group_stats(
+                student, student_group,
+            )
+            group_stats.append({
+                'group': student_group,
+                'completion_percentage': completion_percentage,
+                'average_homework_grade': average_homework_grade,
+                'average_lesson_grade': average_lesson_grade,
+            })
+
     context = {
         'student': student,
         'student_form': student_form,
         'groups_without_student': groups_without_student,
         'parents_without_student': parents_without_student,
         'generated_password': generated_password,
+        'group_stats': group_stats,
     }
     return render(request, 'moderation/student_edit_or_create.html', context)
 
