@@ -699,6 +699,17 @@ class HomeworkCreateOrEditViewTests(TestCase):
         )
         self.assertFalse(HomeworkFile.objects.filter(id=self.homework_file.id).exists())
 
+    def test_edit_page_does_not_nest_delete_form_inside_main_form(self):
+        self.client.force_login(self.teacher_user)
+
+        response = self.client.get(
+            reverse('edit_homework', args=[self.group.id, self.homework.id])
+        )
+
+        content = response.content.decode()
+        self.assertIn(f'data-delete-file-id="{self.homework_file.id}"', content)
+        self.assertNotIn('<form method="post" class="delete-file-form">', content)
+
     def test_owning_teacher_can_create_homework_with_files(self):
         from django.core.files.storage import default_storage
 
