@@ -34,7 +34,6 @@ class LessonAbsence(models.Model):
     makeup_end_time = models.TimeField(null=True, blank=True)
 
     reason = models.CharField(max_length=255, blank=True)
-    is_resolved = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('student', 'lesson', 'missed_date')
@@ -87,6 +86,7 @@ class LessonParticipation(models.Model):
     lesson = models.ForeignKey('schedule.Lesson', on_delete=models.CASCADE, related_name='participations')
     lesson_date = models.DateField()
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='lesson_participations')
+    is_absent = models.BooleanField(default=False)
     score = models.PositiveSmallIntegerField(
         null=True,
         blank=True,

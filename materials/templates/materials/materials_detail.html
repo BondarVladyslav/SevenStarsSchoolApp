@@ -31,7 +31,7 @@
             {% for file in files %}
             {% if file.file.name|is_image %}
             <a href="{% url 'download_material_file' file.id %}" class="material-image-item" target="_blank" rel="noopener">
-                <img src="{% url 'download_material_file' file.id %}" alt="{{ file.file.name|basename }}" loading="lazy">
+                <img src="{{ file.direct_image_url }}" alt="{{ file.file.name|basename }}" loading="lazy">
             </a>
             {% endif %}
             {% endfor %}

@@ -70,6 +70,15 @@
 
         .calendar-lesson.status-moved_away { background: #FFF9E9; }
         .calendar-lesson.status-moved_here { background: rgba(136, 192, 58, 0.12); }
+        .calendar-lesson.status-makeup_here { background: rgba(112, 107, 250, 0.12); }
+        .calendar-lesson.status-makeup_custom { background: rgba(112, 107, 250, 0.08); border: 1px dashed var(--purple); }
+
+        .calendar-lesson-note {
+            display: block;
+            margin-top: 2px;
+            font-size: 10px;
+            color: #8F7B8C;
+        }
 
         .calendar-lesson-time {
             font-weight: 700;
@@ -102,6 +111,11 @@
         .calendar-lesson-participation {
             background: rgba(112, 107, 250, 0.15);
             color: #4B45C7;
+        }
+
+        .calendar-lesson-absent {
+            background: rgba(220, 53, 69, 0.12);
+            color: #B0293A;
         }
 
         .child-switcher {
@@ -173,12 +187,31 @@
                     <div class="calendar-lesson status-{{ entry.status }}">
                         <span class="calendar-lesson-time">{{ entry.start_time|date:"H:i" }}</span>
                         <span class="calendar-lesson-group">{{ entry.group.name }}</span>
+                        {% if entry.status == 'makeup_here' %}
+                            <span class="calendar-lesson-note">Відпрацювання за {{ entry.absence.lesson.group.name }}, {{ entry.absence.missed_date|date:"d.m" }}</span>
+                        {% elif entry.status == 'makeup_custom' %}
+                            <span class="calendar-lesson-note">Відпрацювання (довільний час) за {{ entry.absence.missed_date|date:"d.m" }}</span>
+                        {% elif entry.status == 'normal' and entry.absence %}
+                            <span class="calendar-lesson-note">
+                                {% if entry.absence.makeup_lesson %}
+                                    Відпрацювання: {{ entry.absence.makeup_lesson.group.name }}, {{ entry.absence.makeup_date|date:"d.m" }}
+                                {% elif entry.absence.makeup_date %}
+                                    Відпрацювання: {{ entry.absence.makeup_date|date:"d.m" }}
+                                {% else %}
+                                    Відпрацювання ще не призначено
+                                {% endif %}
+                            </span>
+                        {% endif %}
                         {% if show_combined_score %}
-                            {% if entry.combined_score is not None %}
+                            {% if entry.is_absent %}
+                                <span class="calendar-lesson-grade calendar-lesson-absent">Н</span>
+                            {% elif entry.combined_score is not None %}
                                 <span class="calendar-lesson-grade">Оцінка: {{ entry.combined_score }}/100%</span>
                             {% endif %}
                         {% else %}
-                            {% if entry.participation_score is not None %}
+                            {% if entry.is_absent %}
+                                <span class="calendar-lesson-grade calendar-lesson-absent">Урок: Н</span>
+                            {% elif entry.participation_score is not None %}
                                 <span class="calendar-lesson-grade calendar-lesson-participation">Урок: {{ entry.participation_score }}/50%</span>
                             {% endif %}
                             {% if entry.homework %}

@@ -3,6 +3,19 @@
 
 {% block title %}{% if student %}{{ student.user.get_full_name }}{% else %}Новий студент{% endif %} — Seven Stars School{% endblock %}
 
+{% block extra_css %}
+        .grade-badges {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .group-stat-name {
+            text-transform: uppercase;
+        }
+{% endblock %}
+
 {% block content %}
 
 <div class="detail-header">
@@ -13,6 +26,35 @@
     <div class="detail-main">
 
         {% if student %}
+        {% if group_stats %}
+        <div class="content-card">
+            <div class="panel-title">Оцінки по групах</div>
+
+            {% for stat in group_stats %}
+            <div class="entity-row">
+                <div class="entity-row-main">
+                    <span class="entity-row-title group-stat-name">{{ stat.group.name }}</span>
+                    {% if stat.group.teacher %}
+                        <span class="entity-row-subtitle">{{ stat.group.teacher.user.get_full_name|lower }}</span>
+                    {% endif %}
+                    <div class="grade-badges">
+                        <span class="status-badge status-checked">дз: {% if stat.average_homework_grade is not None %}{{ stat.average_homework_grade }}{% else %}Н{% endif %}/50%</span>
+                        <span class="status-badge status-checked">урок: {% if stat.average_lesson_grade is not None %}{{ stat.average_lesson_grade }}{% else %}Н{% endif %}/50%</span>
+                        <span class="status-badge status-checked">відсоток зданих дз: {% if stat.completion_percentage is not None %}{{ stat.completion_percentage }}{% else %}?{% endif %}/100%</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="content-card">
+            <div class="card-header">
+                <div class="panel-title" style="margin-bottom: 0;">Пропуски та відпрацювання</div>
+                <a href="{% url 'manage_student_absences' student.id %}" class="btn-outline">Керувати пропусками</a>
+            </div>
+        </div>
+
         <div class="content-card">
             <div class="panel-title">Групи студента</div>
 

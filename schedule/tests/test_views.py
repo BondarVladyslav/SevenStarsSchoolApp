@@ -165,3 +165,95 @@ class GradeLessonParticipationViewTests(TestCase):
         self.assertFalse(
             LessonParticipation.objects.filter(lesson=self.lesson, student=self.student).exists()
         )
+
+    def test_custom_time_makeup_shown_on_grading_page(self):
+        from schedule.models import LessonAbsence
+
+        LessonAbsence.objects.create(
+            student=self.student,
+            lesson=self.lesson,
+            missed_date=date(2026, 7, 13),
+            makeup_date=date(2026, 7, 15),
+            makeup_start_time=time(14, 0),
+            makeup_end_time=time(15, 0),
+        )
+
+        self.client.force_login(self.teacher_user)
+        response = self.client.get(
+            reverse('grade_lesson_participation', args=[self.lesson.id, '2026-07-13'])
+        )
+
+        item = next(
+            i for i in response.context['students_with_scores']
+            if i['student'].id == self.student.id
+        )
+        self.assertIsNotNone(item['custom_makeup'])
+        self.assertEqual(item['custom_makeup'].makeup_start_time, time(14, 0))
+
+    def test_visiting_makeup_student_appears_in_roster(self):
+        from schedule.models import LessonAbsence
+
+        other_subject = Subject.objects.create(name='Англійська')
+        other_teacher_user, other_teacher = make_user_with_role('teacher2', Teacher)
+        other_group = Group.objects.create(name='Group B', subject=other_subject, teacher=other_teacher)
+        other_lesson = Lesson.objects.create(
+            group=other_group, weekday=1, start_time=time(12, 0), end_time=time(13, 0),
+        )
+
+        visiting_student_user, visiting_student = make_user_with_role('student2', Student)
+        visiting_student.groups.add(other_group)
+
+        LessonAbsence.objects.create(
+            student=visiting_student,
+            lesson=other_lesson,
+            missed_date=date(2026, 7, 14),
+            makeup_lesson=self.lesson,
+            makeup_date=date(2026, 7, 13),
+        )
+
+        self.client.force_login(self.teacher_user)
+        response = self.client.get(
+            reverse('grade_lesson_participation', args=[self.lesson.id, '2026-07-13'])
+        )
+
+        student_ids = {item['student'].id for item in response.context['students_with_scores']}
+        self.assertIn(visiting_student.id, student_ids)
+
+        visiting_entry = next(
+            item for item in response.context['students_with_scores']
+            if item['student'].id == visiting_student.id
+        )
+        self.assertEqual(visiting_entry['visiting_from'], other_group)
+
+    def test_teacher_can_grade_visiting_makeup_student(self):
+        from schedule.models import LessonAbsence
+
+        other_subject = Subject.objects.create(name='Англійська')
+        other_teacher_user, other_teacher = make_user_with_role('teacher2', Teacher)
+        other_group = Group.objects.create(name='Group B', subject=other_subject, teacher=other_teacher)
+        other_lesson = Lesson.objects.create(
+            group=other_group, weekday=1, start_time=time(12, 0), end_time=time(13, 0),
+        )
+
+        visiting_student_user, visiting_student = make_user_with_role('student2', Student)
+        visiting_student.groups.add(other_group)
+
+        LessonAbsence.objects.create(
+            student=visiting_student,
+            lesson=other_lesson,
+            missed_date=date(2026, 7, 14),
+            makeup_lesson=self.lesson,
+            makeup_date=date(2026, 7, 13),
+        )
+
+        self.client.force_login(self.teacher_user)
+        response = self.client.post(
+            reverse('grade_lesson_participation', args=[self.lesson.id, '2026-07-13']),
+            {f'score_{visiting_student.id}': '30'},
+        )
+
+        self.assertRedirects(response, reverse('schedule'))
+        participation = LessonParticipation.objects.get(
+            lesson=self.lesson, lesson_date=date(2026, 7, 13), student=visiting_student,
+        )
+        self.assertEqual(participation.score, 30)

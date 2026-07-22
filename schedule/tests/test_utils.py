@@ -96,6 +96,65 @@ class GetScheduleRangeTests(TestCase):
 
         self.assertEqual(entry['combined_score'], 35)
 
+    def test_shows_makeup_lesson_hosted_by_another_group(self):
+        from schedule.models import LessonAbsence
+
+        lesson = Lesson.objects.create(
+            group=self.group, weekday=0, start_time=time(10, 0), end_time=time(11, 0),
+        )
+        other_subject = Subject.objects.create(name='Англійська')
+        other_group = Group.objects.create(name='Group 2', subject=other_subject)
+        makeup_lesson = Lesson.objects.create(
+            group=other_group, weekday=1, start_time=time(12, 0), end_time=time(13, 0),
+        )
+
+        LessonAbsence.objects.create(
+            student=self.student,
+            lesson=lesson,
+            missed_date=date(2026, 7, 13),
+            makeup_lesson=makeup_lesson,
+            makeup_date=date(2026, 7, 14),
+        )
+
+        days = get_schedule_range(
+            [self.group.id], date(2026, 7, 13), date(2026, 7, 15), student=self.student,
+        )
+
+        makeup_day = next(d for d in days if d['date'] == date(2026, 7, 14))
+        self.assertEqual(len(makeup_day['lessons']), 1)
+        makeup_entry = makeup_day['lessons'][0]
+        self.assertEqual(makeup_entry['status'], 'makeup_here')
+        self.assertEqual(makeup_entry['group'], other_group)
+
+        missed_day = next(d for d in days if d['date'] == date(2026, 7, 13))
+        missed_entry = next(e for e in missed_day['lessons'] if e['lesson'].id == lesson.id)
+        self.assertIsNotNone(missed_entry['absence'])
+        self.assertEqual(missed_entry['absence'].makeup_lesson, makeup_lesson)
+
+    def test_shows_custom_time_makeup_without_a_lesson(self):
+        from schedule.models import LessonAbsence
+
+        lesson = Lesson.objects.create(
+            group=self.group, weekday=0, start_time=time(10, 0), end_time=time(11, 0),
+        )
+
+        LessonAbsence.objects.create(
+            student=self.student,
+            lesson=lesson,
+            missed_date=date(2026, 7, 13),
+            makeup_date=date(2026, 7, 15),
+            makeup_start_time=time(14, 0),
+            makeup_end_time=time(15, 0),
+        )
+
+        days = get_schedule_range(
+            [self.group.id], date(2026, 7, 13), date(2026, 7, 15), student=self.student,
+        )
+
+        makeup_day = next(d for d in days if d['date'] == date(2026, 7, 15))
+        self.assertEqual(len(makeup_day['lessons']), 1)
+        self.assertEqual(makeup_day['lessons'][0]['status'], 'makeup_custom')
+
 
 class GetUpcomingLessonOccurrencesTests(TestCase):
     def setUp(self):

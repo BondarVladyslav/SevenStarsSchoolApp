@@ -21,13 +21,27 @@ function initFileChip(fileInputId, chipId, maxFileSize = 15 * 1024 * 1024) {
     const chip = document.getElementById(chipId);
     if (!fileInput || !chip) return;
 
+    let previewUrl = null;
+
     const render = () => {
+        if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+            previewUrl = null;
+        }
+
         chip.innerHTML = '';
         if (!fileInput.files.length) return;
 
-        const name = document.createElement('span');
+        const file = fileInput.files[0];
+        previewUrl = URL.createObjectURL(file);
+
+        const name = document.createElement('a');
         name.className = 'file-name-chip-text';
-        name.textContent = fileInput.files[0].name;
+        name.textContent = file.name;
+        name.href = previewUrl;
+        name.target = '_blank';
+        name.rel = 'noopener';
+        name.title = 'Відкрити файл';
 
         const removeBtn = document.createElement('button');
         removeBtn.type = 'button';
@@ -63,6 +77,23 @@ function initFileList(fileInputId, listId, maxFiles = 7, submitButtonId = null, 
     const baseHintText = hint ? hint.textContent : '';
 
     let files = [];
+    const previewUrls = new Map();
+
+    const getPreviewUrl = (file) => {
+        if (!previewUrls.has(file)) {
+            previewUrls.set(file, URL.createObjectURL(file));
+        }
+        return previewUrls.get(file);
+    };
+
+    const revokeUnusedPreviews = () => {
+        previewUrls.forEach((url, file) => {
+            if (!files.includes(file)) {
+                URL.revokeObjectURL(url);
+                previewUrls.delete(file);
+            }
+        });
+    };
 
     const syncInput = () => {
         const dt = new DataTransfer();
@@ -71,15 +102,20 @@ function initFileList(fileInputId, listId, maxFiles = 7, submitButtonId = null, 
     };
 
     const render = () => {
+        revokeUnusedPreviews();
         list.innerHTML = '';
 
         files.forEach((file, index) => {
             const chip = document.createElement('div');
             chip.className = 'file-chip';
 
-            const name = document.createElement('span');
+            const name = document.createElement('a');
             name.className = 'file-chip-name';
             name.textContent = file.name;
+            name.href = getPreviewUrl(file);
+            name.target = '_blank';
+            name.rel = 'noopener';
+            name.title = 'Відкрити файл';
 
             const removeBtn = document.createElement('button');
             removeBtn.type = 'button';

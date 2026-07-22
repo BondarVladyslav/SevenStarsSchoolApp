@@ -30,6 +30,49 @@
     <div class="detail-main">
 
         <div class="content-card">
+            <div class="panel-title">Пропуски учнів групи</div>
+
+            {% if own_students_absences %}
+                {% for absence in own_students_absences %}
+                <a href="{% url 'manage_student_absences' absence.student.id %}" class="entity-row" style="text-decoration: none; display: flex;">
+                    <div class="entity-row-main">
+                        <span class="entity-row-title" style="text-decoration: none;">
+                            {{ absence.student.user.get_full_name }} — {{ absence.missed_date|date:"d.m.Y" }}
+                        </span>
+                        <div class="entity-row-subtitle">
+                            {% if absence.makeup_lesson %}
+                                Відпрацювання: {{ absence.makeup_lesson.group.name }}, {{ absence.makeup_date|date:"d.m.Y" }}
+                            {% elif absence.makeup_date %}
+                                Відпрацювання: {{ absence.makeup_date|date:"d.m.Y" }}
+                            {% else %}
+                                Відпрацювання ще не призначено
+                            {% endif %}
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            {% else %}
+                <div class="list-card-empty">Пропусків у групі немає.</div>
+            {% endif %}
+        </div>
+
+        {% if incoming_makeup_absences %}
+        <div class="content-card">
+            <div class="panel-title">Учні з інших груп на відпрацюванні тут</div>
+
+            {% for absence in incoming_makeup_absences %}
+            <a href="{% url 'manage_student_absences' absence.student.id %}" class="entity-row" style="text-decoration: none; display: flex;">
+                <div class="entity-row-main">
+                    <span class="entity-row-title" style="text-decoration: none;">
+                        {{ absence.student.user.get_full_name }} ({{ absence.lesson.group.name }}) — {{ absence.makeup_date|date:"d.m.Y" }}
+                    </span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="content-card">
             <div class="panel-title">Уроки</div>
 
             {% if lessons %}

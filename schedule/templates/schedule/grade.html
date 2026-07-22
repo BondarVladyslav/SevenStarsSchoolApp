@@ -39,6 +39,22 @@
             outline: none;
             border-color: var(--orange);
         }
+
+        .participation-score-input:disabled {
+            background: #F5F2F5;
+            color: #9C919B;
+            cursor: not-allowed;
+        }
+
+        .participation-absent-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            color: var(--text);
+            white-space: nowrap;
+        }
 {% endblock %}
 
 {% block content %}
@@ -67,13 +83,29 @@
     <div class="content-card">
         <div class="panel-title">Оцінки за урок (0–50)</div>
 
-        <form method="post">
+        <form method="post" class="grade-participation-form">
             {% csrf_token %}
 
             {% if students_with_scores %}
                 {% for item in students_with_scores %}
                 <div class="participation-row">
-                    <span class="participation-name">{{ item.student.user.get_full_name }}</span>
+                    <span class="participation-name">
+                        {{ item.student.user.get_full_name }}
+                        {% if item.visiting_from %}
+                            <span class="status-badge status-pending" style="margin-left: 6px;">гість: {{ item.visiting_from.name }}</span>
+                        {% endif %}
+                        {% if item.custom_makeup %}
+                            <span class="status-badge status-pending" style="margin-left: 6px;">відпрацювання: {{ item.custom_makeup.makeup_date|date:"d.m" }}, {{ item.custom_makeup.makeup_start_time|date:"H:i" }}–{{ item.custom_makeup.makeup_end_time|date:"H:i" }}</span>
+                        {% endif %}
+                    </span>
+                    <label class="participation-absent-label">
+                        <input
+                            type="checkbox"
+                            name="is_absent_{{ item.student.id }}"
+                            {% if item.is_absent %}checked{% endif %}
+                        />
+                        Відсутній
+                    </label>
                     <input
                         type="number"
                         name="score_{{ item.student.id }}"
@@ -82,7 +114,7 @@
                         max="50"
                         value="{{ item.score|default_if_none:'' }}"
                         placeholder="—"
-                    >
+                    />
                 </div>
                 {% endfor %}
             {% else %}
@@ -94,4 +126,32 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.querySelectorAll('.grade-participation-form .participation-row').forEach(function (row) {
+        var checkbox = row.querySelector('input[type="checkbox"]');
+        var scoreInput = row.querySelector('input[type="number"]');
+        if (!checkbox || !scoreInput) return;
+
+        var syncFromCheckbox = function () {
+            if (checkbox.checked) {
+                scoreInput.value = '';
+                scoreInput.disabled = true;
+            } else {
+                scoreInput.disabled = false;
+            }
+        };
+
+        checkbox.addEventListener('change', syncFromCheckbox);
+        scoreInput.addEventListener('input', function () {
+            if (scoreInput.value.trim() !== '') {
+                checkbox.checked = false;
+            }
+        });
+
+        syncFromCheckbox();
+    });
+</script>
 {% endblock %}

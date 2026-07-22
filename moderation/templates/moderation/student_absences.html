@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Пропуски — {{ student.user.get_full_name }} — Seven Stars School{% endblock %}
+
+{% block content %}
+
+<div class="detail-header">
+    <a href="{% url 'edit_student' student.id %}" class="back-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        {{ student.user.get_full_name }}
+    </a>
+    <h1>Пропуски та відпрацювання</h1>
+</div>
+
+<div class="detail-single">
+    <div class="detail-main">
+
+        <div class="content-card">
+            <div class="panel-title">Наявні пропуски</div>
+
+            {% if absences %}
+                {% for absence in absences %}
+                <div class="entity-row">
+                    <div class="entity-row-main">
+                        <span class="entity-row-title" style="text-decoration: none;">
+                            {{ absence.lesson.group.name }} — {{ absence.missed_date|date:"d.m.Y" }}
+                        </span>
+                        <div class="entity-row-subtitle">
+                            {% if absence.makeup_lesson %}
+                                Відпрацювання: {{ absence.makeup_lesson.group.name }}, {{ absence.makeup_date|date:"d.m.Y" }}, {{ absence.makeup_lesson.start_time|date:"H:i" }}–{{ absence.makeup_lesson.end_time|date:"H:i" }}
+                            {% elif absence.makeup_date %}
+                                Відпрацювання: {{ absence.makeup_date|date:"d.m.Y" }}, {{ absence.makeup_start_time|date:"H:i" }}–{{ absence.makeup_end_time|date:"H:i" }}
+                            {% else %}
+                                Відпрацювання ще не призначено
+                            {% endif %}
+                            {% if absence.reason %} — {{ absence.reason }}{% endif %}
+                        </div>
+                    </div>
+                    <div class="entity-row-actions">
+                        <form method="post" data-confirm-delete>
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete_absence">
+                            <input type="hidden" name="absence_id" value="{{ absence.id }}">
+                            <button type="submit" class="btn-danger-outline">Видалити</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="list-card-empty">Пропусків поки немає.</div>
+            {% endif %}
+        </div>
+
+        <div class="content-card">
+            <div class="panel-title">Додати пропуск</div>
+
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_absence">
+
+                <div class="form-field">
+                    <label>Пропущене заняття (± {{ days_range }} днів від сьогодні)</label>
+                    <div class="searchable-select" id="missedSearchSelect">
+                        <svg class="searchable-select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" class="searchable-select-input" placeholder="Пошук заняття..." autocomplete="off">
+                        <input type="hidden" name="lesson_occurrence" class="searchable-select-value">
+                        <div class="searchable-select-dropdown">
+                            {% for occ in missed_occurrences %}
+                            <div class="searchable-select-option" data-value="{{ occ.lesson.id }}_{{ occ.date|date:'Y-m-d' }}">
+                                {{ occ.lesson.group.name }}, {{ occ.lesson.get_weekday_display }}, {{ occ.date|date:"d.m.Y" }}, {{ occ.lesson.start_time|date:"H:i" }}–{{ occ.lesson.end_time|date:"H:i" }}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="makeup_choice">Відпрацювання</label>
+                    <select name="makeup_choice" id="makeup_choice">
+                        <option value="">Ще не призначено</option>
+                        <option value="lesson">Приєднати до заняття іншої групи</option>
+                        <option value="custom">Довільний час</option>
+                    </select>
+                </div>
+
+                <div id="makeupLessonFields" style="display: none;">
+                    <div class="form-field">
+                        <label>Заняття для відпрацювання (± {{ days_range }} днів)</label>
+                        <div class="searchable-select" id="makeupSearchSelect">
+                            <svg class="searchable-select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <input type="text" class="searchable-select-input" placeholder="Пошук заняття..." autocomplete="off">
+                            <input type="hidden" name="makeup_occurrence" class="searchable-select-value">
+                            <div class="searchable-select-dropdown">
+                                {% for occ in makeup_occurrences %}
+                                <div class="searchable-select-option" data-value="{{ occ.lesson.id }}_{{ occ.date|date:'Y-m-d' }}">
+                                    {{ occ.group.name }}, {{ occ.lesson.get_weekday_display }}, {{ occ.date|date:"d.m.Y" }}, {{ occ.lesson.start_time|date:"H:i" }}–{{ occ.lesson.end_time|date:"H:i" }}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="makeupCustomFields" style="display: none;">
+                    <div class="form-field">
+                        <label for="makeup_date">Дата відпрацювання</label>
+                        <input type="date" name="makeup_date" id="makeup_date">
+                    </div>
+                    <div class="form-field">
+                        <label for="makeup_start_time">Час початку</label>
+                        <input type="time" name="makeup_start_time" id="makeup_start_time">
+                    </div>
+                    <div class="form-field">
+                        <label for="makeup_end_time">Час кінця</label>
+                        <input type="time" name="makeup_end_time" id="makeup_end_time">
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="reason">Причина (необов'язково)</label>
+                    <input type="text" name="reason" id="reason">
+                </div>
+
+                <button type="submit" class="btn-block">Додати</button>
+            </form>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/searchable_select.js' %}"></script>
+<script>
+    initSearchableSelect('missedSearchSelect', {
+        emptyMessage: 'Занять не знайдено',
+        requireSelection: true,
+    });
+    initSearchableSelect('makeupSearchSelect', {
+        emptyMessage: 'Занять не знайдено',
+    });
+
+    const makeupChoiceSelect = document.getElementById('makeup_choice');
+    const makeupLessonFields = document.getElementById('makeupLessonFields');
+    const makeupCustomFields = document.getElementById('makeupCustomFields');
+
+    function toggleMakeupFields() {
+        makeupLessonFields.style.display = makeupChoiceSelect.value === 'lesson' ? 'block' : 'none';
+        makeupCustomFields.style.display = makeupChoiceSelect.value === 'custom' ? 'block' : 'none';
+    }
+
+    makeupChoiceSelect.addEventListener('change', toggleMakeupFields);
+    toggleMakeupFields();
+
+    const addAbsenceForm = makeupChoiceSelect.closest('form');
+    const makeupOccurrenceInput = document.querySelector('#makeupSearchSelect .searchable-select-value');
+    const makeupSearchInput = document.querySelector('#makeupSearchSelect .searchable-select-input');
+
+    addAbsenceForm.addEventListener('submit', (event) => {
+        if (makeupChoiceSelect.value === 'lesson' && !makeupOccurrenceInput.value) {
+            event.preventDefault();
+            makeupSearchInput.style.borderColor = '#E24B4A';
+            makeupSearchInput.focus();
+            setTimeout(() => { makeupSearchInput.style.borderColor = ''; }, 1500);
+        }
+    });
+
+    document.querySelectorAll('[data-confirm-delete]').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            if (!window.confirm('Ви впевнені? Цю дію не можна скасувати.')) {
+                event.preventDefault();
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -20,4 +20,5 @@ urlpatterns = [
     path('create-level/', level_edit_or_create, name='create_level'),
     path('edit-level/<int:level_id>/', level_edit_or_create, name='edit_level'),
     path('group-schedule/<int:group_id>/exceptions/', manage_schedule_exceptions, name='manage_schedule_exceptions'),
+    path('edit-student/<int:student_id>/absences/', manage_student_absences, name='manage_student_absences'),
 ]

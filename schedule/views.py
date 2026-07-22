@@ -2,11 +2,13 @@ from datetime import datetime, timedelta
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from users.models import Parent, Student, Teacher
-from schedule.models import Lesson, LessonParticipation
+from schedule.models import Lesson, LessonAbsence, LessonParticipation
 from schedule.utils import get_schedule_range
 
 DAYS_BEFORE = 14
@@ -85,35 +87,76 @@ def grade_lesson_participation(request, lesson_id, date):
     lesson = get_object_or_404(Lesson, id=lesson_id, group__teacher=teacher)
     lesson_date = datetime.strptime(date, '%Y-%m-%d').date()
 
-    students = lesson.group.students.select_related('user').all()
+    students = list(lesson.group.students.select_related('user').all())
+    own_student_ids = {student.id for student in students}
 
-    existing_scores = {
-        p.student_id: p.score
+    visiting_absences = LessonAbsence.objects.filter(
+        makeup_lesson=lesson, makeup_date=lesson_date,
+    ).select_related('student__user', 'lesson__group')
+
+    visiting_group_by_student_id = {}
+    for absence in visiting_absences:
+        if absence.student_id not in own_student_ids:
+            students.append(absence.student)
+            visiting_group_by_student_id[absence.student_id] = absence.lesson.group
+
+    custom_makeup_by_student_id = {
+        absence.student_id: absence
+        for absence in LessonAbsence.objects.filter(
+            lesson=lesson, missed_date=lesson_date, makeup_lesson__isnull=True,
+        ).exclude(makeup_date__isnull=True)
+    }
+
+    existing_participations = {
+        p.student_id: p
         for p in LessonParticipation.objects.filter(lesson=lesson, lesson_date=lesson_date)
     }
 
     if request.method == 'POST':
+        parsed_entries = []
+
         for student in students:
+            is_absent = bool(request.POST.get(f'is_absent_{student.id}'))
             raw_score = request.POST.get(f'score_{student.id}', '').strip()
+
+            if is_absent and raw_score != '':
+                return HttpResponse('Неможливо встановлення оцінки для відсутнього учня', status=400)
+
             if raw_score == '':
-                continue
+                score = None
+            else:
+                try:
+                    score = max(0, min(50, int(raw_score)))
+                except ValueError:
+                    return HttpResponse('Некоректне значення оцінки', status=400)
 
-            score = max(0, min(50, int(raw_score)))
+            parsed_entries.append((student, is_absent, score))
 
-            LessonParticipation.objects.update_or_create(
-                lesson=lesson,
-                lesson_date=lesson_date,
-                student=student,
-                defaults={'score': score},
-            )
+        with transaction.atomic():
+            for student, is_absent, score in parsed_entries:
+                if not is_absent and score is None and student.id not in existing_participations:
+                    continue
+
+                LessonParticipation.objects.update_or_create(
+                    lesson=lesson,
+                    lesson_date=lesson_date,
+                    student=student,
+                    defaults={'is_absent': is_absent, 'score': score},
+                )
 
         return redirect('schedule')
 
     students_with_scores = [
-        {'student': student, 'score': existing_scores.get(student.id)}
+        {
+            'student': student,
+            'score': existing_participations[student.id].score if student.id in existing_participations else None,
+            'is_absent': existing_participations[student.id].is_absent if student.id in existing_participations else False,
+            'visiting_from': visiting_group_by_student_id.get(student.id),
+            'custom_makeup': custom_makeup_by_student_id.get(student.id),
+        }
         for student in students
     ]
-
+    
     context = {
         'lesson': lesson,
         'lesson_date': lesson_date,

@@ -1,6 +1,9 @@
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from courses.models import Group, Level, Subject
 from users.models import Parent, Student, Teacher
@@ -189,6 +192,79 @@ class StudentEditOrCreateViewTests(TestCase):
             'action': 'remove_parent_from_student', 'parent_id': parent.id,
         })
         self.assertFalse(student.parents.filter(pk=parent.pk).exists())
+
+    def test_group_stats_not_shown_when_creating_new_student(self):
+        response = self.client.get(reverse('create_student'))
+        self.assertEqual(response.context['group_stats'], [])
+
+    def test_group_stats_covers_all_groups_the_student_belongs_to(self):
+        subject = Subject.objects.create(name='Математика')
+        other_subject = Subject.objects.create(name='Англійська')
+        teacher_user = User.objects.create_user(username='teacher10', password='pass12345')
+        teacher = Teacher.objects.create(user=teacher_user)
+        group = Group.objects.create(name='Group A', subject=subject, teacher=teacher)
+        other_group = Group.objects.create(name='Group B', subject=other_subject, teacher=teacher)
+
+        student_user = User.objects.create_user(username='student10', password='pass12345')
+        student = Student.objects.create(user=student_user)
+        student.groups.add(group, other_group)
+
+        response = self.client.get(reverse('edit_student', args=[student.id]))
+
+        group_ids = {s['group'].id for s in response.context['group_stats']}
+        self.assertEqual(group_ids, {group.id, other_group.id})
+
+    def test_group_stats_shows_lowercase_teacher_full_name(self):
+        subject = Subject.objects.create(name='Математика')
+        teacher_user = User.objects.create_user(
+            username='teacher11', password='pass12345', first_name='Олена', last_name='Коваленко',
+        )
+        teacher = Teacher.objects.create(user=teacher_user)
+        group = Group.objects.create(name='Group A', subject=subject, teacher=teacher)
+
+        student_user = User.objects.create_user(username='student11', password='pass12345')
+        student = Student.objects.create(user=student_user)
+        student.groups.add(group)
+
+        response = self.client.get(reverse('edit_student', args=[student.id]))
+
+        content = response.content.decode()
+        self.assertIn('олена коваленко', content)
+        self.assertNotIn('Олена Коваленко', content)
+
+    def test_group_stats_reflect_completion_and_grades(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from courses.models import Homework, HomeworkSubmission
+
+        subject = Subject.objects.create(name='Математика')
+        teacher_user = User.objects.create_user(username='teacher12', password='pass12345')
+        teacher = Teacher.objects.create(user=teacher_user)
+        group = Group.objects.create(name='Group A', subject=subject, teacher=teacher)
+
+        student_user = User.objects.create_user(username='student12', password='pass12345')
+        student = Student.objects.create(user=student_user)
+        student.groups.add(group)
+
+        submitted_homework = Homework.objects.create(
+            group=group, title='Здане', description='Опис',
+            deadline=timezone.now() + timedelta(days=1),
+        )
+        Homework.objects.create(
+            group=group, title='Нездане', description='Опис',
+            deadline=timezone.now() + timedelta(days=1),
+        )
+        HomeworkSubmission.objects.create(
+            homework=submitted_homework, student=student, status='checked', grade=35,
+        )
+
+        response = self.client.get(reverse('edit_student', args=[student.id]))
+
+        stat = next(s for s in response.context['group_stats'] if s['group'].id == group.id)
+        self.assertEqual(stat['completion_percentage'], 50)
+        self.assertEqual(stat['average_homework_grade'], 35)
 
 
 class ParentEditOrCreateViewTests(TestCase):
@@ -441,3 +517,138 @@ class ScheduleExceptionsViewTests(TestCase):
         })
 
         self.assertEqual(response.status_code, 400)
+
+class ManageStudentAbsencesViewTests(TestCase):
+    def setUp(self):
+        self.superuser = User.objects.create_user(
+            username='admin1', password='pass12345', is_superuser=True, is_staff=True,
+        )
+        self.client.force_login(self.superuser)
+
+        from datetime import time
+        from schedule.models import Lesson
+
+        subject = Subject.objects.create(name='Математика')
+        self.teacher_user = User.objects.create_user(username='teacher1', password='pass12345')
+        self.teacher = Teacher.objects.create(user=self.teacher_user)
+        self.group = Group.objects.create(name='Group A', subject=subject, teacher=self.teacher)
+        self.lesson = Lesson.objects.create(
+            group=self.group, weekday=0, start_time=time(10, 0), end_time=time(11, 0),
+        )
+
+        student_user = User.objects.create_user(username='student1', password='pass12345')
+        self.student = Student.objects.create(user=student_user)
+        self.student.groups.add(self.group)
+
+        self.missed_date = timezone.now().date() + timedelta(days=7)
+        while self.missed_date.weekday() != 0:
+            self.missed_date += timedelta(days=1)
+
+    def test_non_superuser_gets_redirected(self):
+        regular_user = User.objects.create_user(username='regular1', password='pass12345')
+        self.client.force_login(regular_user)
+
+        response = self.client.get(reverse('manage_student_absences', args=[self.student.id]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse('login'), response.url)
+
+    def test_add_absence_with_makeup_lesson_syncs_is_absent(self):
+        from datetime import time
+
+        from schedule.models import Lesson, LessonAbsence, LessonParticipation
+
+        other_subject = Subject.objects.create(name='Англійська')
+        other_teacher_user = User.objects.create_user(username='teacher2', password='pass12345')
+        other_teacher = Teacher.objects.create(user=other_teacher_user)
+        other_group = Group.objects.create(name='Group B', subject=other_subject, teacher=other_teacher)
+        makeup_date = self.missed_date + timedelta(days=1)
+        other_lesson = Lesson.objects.create(
+            group=other_group, weekday=makeup_date.weekday(), start_time=time(12, 0), end_time=time(13, 0),
+        )
+
+        response = self.client.post(
+            reverse('manage_student_absences', args=[self.student.id]),
+            {
+                'action': 'add_absence',
+                'lesson_occurrence': f'{self.lesson.id}_{self.missed_date.isoformat()}',
+                'makeup_choice': 'lesson',
+                'makeup_occurrence': f'{other_lesson.id}_{makeup_date.isoformat()}',
+            },
+        )
+
+        self.assertRedirects(response, reverse('manage_student_absences', args=[self.student.id]))
+        absence = LessonAbsence.objects.get(student=self.student, lesson=self.lesson)
+        self.assertEqual(absence.makeup_lesson, other_lesson)
+        self.assertEqual(absence.makeup_date, makeup_date)
+
+        participation = LessonParticipation.objects.get(
+            lesson=self.lesson, lesson_date=self.missed_date, student=self.student,
+        )
+        self.assertTrue(participation.is_absent)
+        self.assertIsNone(participation.score)
+
+    def test_add_absence_with_custom_makeup_time(self):
+        from schedule.models import LessonAbsence
+
+        makeup_date = self.missed_date + timedelta(days=2)
+
+        response = self.client.post(
+            reverse('manage_student_absences', args=[self.student.id]),
+            {
+                'action': 'add_absence',
+                'lesson_occurrence': f'{self.lesson.id}_{self.missed_date.isoformat()}',
+                'makeup_choice': 'custom',
+                'makeup_date': makeup_date.isoformat(),
+                'makeup_start_time': '15:00',
+                'makeup_end_time': '16:00',
+            },
+        )
+
+        self.assertRedirects(response, reverse('manage_student_absences', args=[self.student.id]))
+        absence = LessonAbsence.objects.get(student=self.student, lesson=self.lesson)
+        self.assertIsNone(absence.makeup_lesson)
+        self.assertEqual(absence.makeup_date, makeup_date)
+
+    def test_delete_absence_reverts_is_absent(self):
+        from schedule.models import LessonAbsence, LessonParticipation
+
+        absence = LessonAbsence.objects.create(
+            student=self.student, lesson=self.lesson, missed_date=self.missed_date,
+        )
+        LessonParticipation.objects.create(
+            lesson=self.lesson, lesson_date=self.missed_date, student=self.student, is_absent=True,
+        )
+
+        response = self.client.post(
+            reverse('manage_student_absences', args=[self.student.id]),
+            {'action': 'delete_absence', 'absence_id': absence.id},
+        )
+
+        self.assertRedirects(response, reverse('manage_student_absences', args=[self.student.id]))
+        self.assertFalse(LessonAbsence.objects.filter(id=absence.id).exists())
+        participation = LessonParticipation.objects.get(
+            lesson=self.lesson, lesson_date=self.missed_date, student=self.student,
+        )
+        self.assertFalse(participation.is_absent)
+
+    def test_cannot_add_absence_for_lesson_outside_students_groups(self):
+        from datetime import time
+
+        from schedule.models import Lesson
+
+        other_subject = Subject.objects.create(name='Англійська')
+        other_group = Group.objects.create(name='Group B', subject=other_subject)
+        foreign_lesson = Lesson.objects.create(
+            group=other_group, weekday=self.missed_date.weekday(), start_time=time(9, 0), end_time=time(10, 0),
+        )
+
+        response = self.client.post(
+            reverse('manage_student_absences', args=[self.student.id]),
+            {
+                'action': 'add_absence',
+                'lesson_occurrence': f'{foreign_lesson.id}_{self.missed_date.isoformat()}',
+            },
+        )
+
+        self.assertEqual(response.status_code, 404)

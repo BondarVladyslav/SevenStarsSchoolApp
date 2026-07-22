@@ -43,9 +43,16 @@ def material_detail_view(request, material_id):
     if not user_has_access_to_material(request.user, material):
         raise PermissionDenied
 
+    files = list(material.files.all())
+    for material_file in files:
+        material_file.direct_image_url = (
+            presigned_download_url(material_file.file, expire=3600, inline=True)
+            if is_image(material_file.file.name) else None
+        )
+
     context = {
         'material': material,
-        'files': material.files.all(),
+        'files': files,
     }
     return render(request, 'materials/materials_detail.html', context)
 

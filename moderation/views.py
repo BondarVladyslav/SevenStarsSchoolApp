@@ -8,10 +8,12 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.urls import reverse
 from chat.models import User
 from courses.models import Group, Level, Subject
+from courses.views import _compute_student_group_stats
 from materials.forms import MaterialEditForm
 from materials.models import Material, MaterialFile
 from moderation.forms import GroupEditForm, LevelEditForm, ParentEditForm, StudentEditForm, SubjectEditForm, TeacherEditForm
-from schedule.models import Lesson, ScheduleException
+from schedule.models import Lesson, LessonAbsence, LessonParticipation, ScheduleException
+from schedule.utils import get_all_groups_nearby_occurrences
 from users.models import Parent, Student, Teacher
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -178,12 +180,26 @@ def student_edit_or_create(request, student_id=None):
         Parent.objects.exclude(children=student).distinct() if student else Parent.objects.none()
     )
 
+    group_stats = []
+    if student:
+        for student_group in student.groups.select_related('teacher__user').all():
+            completion_percentage, average_homework_grade, average_lesson_grade = _compute_student_group_stats(
+                student, student_group,
+            )
+            group_stats.append({
+                'group': student_group,
+                'completion_percentage': completion_percentage,
+                'average_homework_grade': average_homework_grade,
+                'average_lesson_grade': average_lesson_grade,
+            })
+
     context = {
         'student': student,
         'student_form': student_form,
         'groups_without_student': groups_without_student,
         'parents_without_student': parents_without_student,
         'generated_password': generated_password,
+        'group_stats': group_stats,
     }
     return render(request, 'moderation/student_edit_or_create.html', context)
 
@@ -406,6 +422,12 @@ def manage_group_schedule(request, group_id):
         'group': group,
         'lessons': lessons,
         'weekday_choices': Lesson.WEEKDAY_CHOICES,
+        'own_students_absences': LessonAbsence.objects.filter(lesson__group=group)
+            .select_related('student__user', 'makeup_lesson__group')
+            .order_by('-missed_date'),
+        'incoming_makeup_absences': LessonAbsence.objects.filter(makeup_lesson__group=group)
+            .select_related('student__user', 'lesson__group')
+            .order_by('makeup_date'),
     }
     return render(request, 'moderation/group_schedule.html', context)
 
@@ -697,3 +719,88 @@ def manage_schedule_exceptions(request, group_id):
         'days_range':DAYS_RANGE
     }
     return render(request, 'moderation/schedule_exceptions.html', context)
+
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser, login_url='login')
+def manage_student_absences(request, student_id):
+    student = get_object_or_404(Student, id=student_id)
+
+    absences = (
+        LessonAbsence.objects.filter(student=student)
+        .select_related('lesson', 'lesson__group', 'makeup_lesson', 'makeup_lesson__group')
+        .order_by('-missed_date')
+    )
+
+    missed_occurrences = []
+    for student_group in student.groups.all():
+        missed_occurrences.extend(get_nearby_lesson_occurrences(student_group))
+    missed_occurrences.sort(key=lambda occ: occ['date'])
+
+    makeup_occurrences = get_all_groups_nearby_occurrences(DAYS_RANGE)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'add_absence':
+            lesson_occurrence = request.POST.get('lesson_occurrence')
+            if not lesson_occurrence:
+                return HttpResponseBadRequest('Оберіть пропущене заняття')
+
+            lesson_id, missed_date = lesson_occurrence.split('_')
+            lesson = get_object_or_404(Lesson, id=lesson_id, group__students=student)
+
+            absence = LessonAbsence(
+                student=student,
+                lesson=lesson,
+                missed_date=missed_date,
+                reason=request.POST.get('reason', ''),
+            )
+
+            makeup_choice = request.POST.get('makeup_choice')
+            if makeup_choice == 'lesson':
+                makeup_occurrence = request.POST.get('makeup_occurrence')
+                if not makeup_occurrence:
+                    return HttpResponseBadRequest('Оберіть заняття для відпрацювання')
+                makeup_lesson_id, makeup_date = makeup_occurrence.split('_')
+                absence.makeup_lesson = get_object_or_404(Lesson, id=makeup_lesson_id)
+                absence.makeup_date = makeup_date
+            elif makeup_choice == 'custom':
+                absence.makeup_date = request.POST.get('makeup_date') or None
+                absence.makeup_start_time = request.POST.get('makeup_start_time') or None
+                absence.makeup_end_time = request.POST.get('makeup_end_time') or None
+
+            try:
+                absence.full_clean()
+            except ValidationError as e:
+                return HttpResponseBadRequest('; '.join(e.messages))
+
+            absence.save()
+
+            LessonParticipation.objects.update_or_create(
+                lesson=lesson,
+                lesson_date=missed_date,
+                student=student,
+                defaults={'is_absent': True, 'score': None},
+            )
+
+            return redirect('manage_student_absences', student_id=student.id)
+
+        elif action == 'delete_absence':
+            absence_id = request.POST.get('absence_id')
+            absence = LessonAbsence.objects.filter(id=absence_id, student=student).first()
+            if absence:
+                LessonParticipation.objects.filter(
+                    lesson=absence.lesson, lesson_date=absence.missed_date, student=student,
+                ).update(is_absent=False)
+                absence.delete()
+            return redirect('manage_student_absences', student_id=student.id)
+
+    context = {
+        'student': student,
+        'absences': absences,
+        'missed_occurrences': missed_occurrences,
+        'makeup_occurrences': makeup_occurrences,
+        'days_range': DAYS_RANGE,
+    }
+    return render(request, 'moderation/student_absences.html', context)

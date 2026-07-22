@@ -1,7 +1,10 @@
 #!/bin/sh
 set -e
 
-python manage.py collectstatic --noinput
-python manage.py migrate --noinput
+chown -R appuser:appuser /app/staticfiles 2>/dev/null || true
+chown -R appuser:appuser /app/media 2>/dev/null || true
 
-exec "$@"
+gosu appuser python manage.py collectstatic --noinput
+gosu appuser python manage.py migrate --noinput
+
+exec gosu appuser "$@"
