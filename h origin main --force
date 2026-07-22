@@ -1,0 +1,20 @@
+[33mcommit d88ed6230c06378fef630d0b965e517a6f496041[m
+Author: BondarVladyslav <1vladbondar1@gmail.com>
+Date:   Tue Jul 21 18:55:48 2026 +0300
+
+    fixed dockerfile
+
+ Dockerfile                                         |  3 [32m+[m[31m-[m
+ .../templates/courses/homework_create_or_edit.html |  8 [32m++[m[31m-[m
+ courses/tests/test_views.py                        | 12 [32m++[m[31m--[m
+ courses/views.py                                   | 37 [32m++++++++++[m[31m-[m
+ entrypoint.sh                                      |  9 [32m++[m[31m-[m
+ .../templates/materials/materials_detail.html      |  2 [32m+[m[31m-[m
+ materials/views.py                                 |  9 [32m++[m[31m-[m
+ .../moderation/materials_edit_or_create.html       |  8 [32m++[m[31m-[m
+ .../moderation/student_edit_or_create.html         | 35 [32m+++++++++++[m
+ moderation/tests/test_views.py                     | 73 [32m++++++++++++++++++++++[m
+ moderation/views.py                                | 15 [32m+++++[m
+ static/js/form_utils.js                            | 42 [32m++++++++++++[m[31m-[m
+ templates/base.html                                |  8 [32m+++[m
+ 13 files changed, 240 insertions(+), 21 deletions(-)

@@ -37,9 +37,9 @@
                     {% if stat.group.teacher %}
                         <span class="entity-row-subtitle">{{ stat.group.teacher.user.get_full_name|lower }}</span>
                     {% endif %}
-                    <div class="grade-badges">
-                        <span class="status-badge status-checked">дз: {% if stat.average_homework_grade is not None %}{{ stat.average_homework_grade }}{% else %}Н{% endif %}/50%</span>
-                        <span class="status-badge status-checked">урок: {% if stat.average_lesson_grade is not None %}{{ stat.average_lesson_grade }}{% else %}Н{% endif %}/50%</span>
+<div class="grade-badges">
+                        <span class="status-badge status-checked">дз: {% if stat.average_homework_grade is not None %}{{ stat.average_homework_grade }}{% else %}?{% endif %}/50%</span>
+                        <span class="status-badge status-checked">урок: {% if stat.average_lesson_grade is not None %}{{ stat.average_lesson_grade }}{% else %}?{% endif %}/50%</span>
                         <span class="status-badge status-checked">відсоток зданих дз: {% if stat.completion_percentage is not None %}{{ stat.completion_percentage }}{% else %}?{% endif %}/100%</span>
                     </div>
                 </div>
@@ -54,7 +54,6 @@
                 <a href="{% url 'manage_student_absences' student.id %}" class="btn-outline">Керувати пропусками</a>
             </div>
         </div>
-
         <div class="content-card">
             <div class="panel-title">Групи студента</div>
 

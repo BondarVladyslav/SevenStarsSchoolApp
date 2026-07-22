@@ -8,6 +8,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            flex-wrap: wrap;
             gap: 16px;
             background: #fff;
             border: 2px solid #F0EBEF;
@@ -21,10 +22,16 @@
             font-weight: 700;
             font-size: 15px;
             color: var(--text);
+            min-width: 0;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
         }
 
         .participation-score-input {
             width: 90px;
+            flex-shrink: 0;
             padding: 10px 14px;
             border: 2px solid #ECE3EA;
             border-radius: 16px;
@@ -54,6 +61,7 @@
             font-size: 13px;
             color: var(--text);
             white-space: nowrap;
+            flex-shrink: 0;
         }
 {% endblock %}
 
